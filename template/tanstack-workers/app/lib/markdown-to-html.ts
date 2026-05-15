@@ -5,6 +5,7 @@ import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import { blurhashToDataUrl } from "./blurhash-data-url";
 import { decodeImageTitle } from "./image-title";
+import { resolveImageUrl } from "./image-url";
 
 interface HastNode {
     type: string;
@@ -23,12 +24,16 @@ function collect(
     if (node.children) for (const c of node.children) collect(c, tagName, out);
 }
 
-function resolveSrc(src: string, cdnBaseUrl: string): string {
-    if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return src;
-    if (!cdnBaseUrl) return src;
-    const base = cdnBaseUrl.replace(/\/$/, "");
-    const path = src.startsWith("/") ? src : `/${src}`;
-    return `${base}${path}`;
+type StyleValue = string | number | false | null | undefined;
+
+function styleToString(style: Record<string, StyleValue>): string {
+    return Object.entries(style)
+        .filter((entry): entry is [string, string | number] => {
+            const value = entry[1];
+            return value !== false && value != null;
+        })
+        .map(([property, value]) => `${property}:${value}`)
+        .join(";");
 }
 
 interface HydrateImagesOptions {
@@ -73,22 +78,22 @@ function rehypeHydrateImages(options: HydrateImagesOptions) {
                 type: "element",
                 tagName: "img",
                 properties: {
-                    src: resolveSrc(src, options.cdnBaseUrl),
+                    src: resolveImageUrl(src, options.cdnBaseUrl),
                     alt,
                     loading: "lazy",
                     decoding: "async",
                     ...(meta.width ? { width: meta.width } : {}),
                     ...(meta.height ? { height: meta.height } : {}),
-                    style: [
-                        "position:relative",
-                        "display:block",
-                        "width:100%",
-                        "height:auto",
+                    style: styleToString({
+                        position: "relative",
+                        display: "block",
+                        width: "100%",
+                        height: "auto",
                         // Fade in once the bytes arrive. Inline onload + style
                         // mutation keeps this client-JS-free.
-                        placeholder ? "opacity:0" : "opacity:1",
-                        "transition:opacity 350ms ease-in",
-                    ].join(";"),
+                        opacity: placeholder ? 0 : 1,
+                        transition: "opacity 350ms ease-in",
+                    }),
                     ...(placeholder
                         ? {
                               onload: "this.style.opacity=1",
@@ -108,42 +113,43 @@ function rehypeHydrateImages(options: HydrateImagesOptions) {
                         src: placeholder,
                         alt: "",
                         "aria-hidden": "true",
-                        style: [
-                            "position:absolute",
-                            "inset:0",
-                            "width:100%",
-                            "height:100%",
-                            "object-fit:cover",
+                        style: styleToString({
+                            position: "absolute",
+                            inset: 0,
+                            width: "100%",
+                            height: "100%",
+                            "object-fit": "cover",
                             // Blur smooths the 32px decoded source so it
                             // reads as a soft hint of the final photo.
-                            "filter:blur(18px)",
-                            "transform:scale(1.1)",
-                        ].join(";"),
+                            filter: "blur(18px)",
+                            transform: "scale(1.1)",
+                        }),
                     },
                     children: [],
                 });
             }
             children.push(realImg);
 
-            const wrapperStyle: string[] = [
-                "position:relative",
-                "display:inline-block",
-                "overflow:hidden",
-                "line-height:0",
-                "background:#0001",
-                "border-radius:0.5rem",
-            ];
-            if (meta.width && meta.height) {
-                wrapperStyle.push(
-                    `aspect-ratio:${meta.width}/${meta.height}`,
-                    "max-width:100%",
-                    `width:${meta.width}px`,
-                );
-            }
             img.tagName = "span";
             img.properties = {
                 "data-hagaki-img": "",
-                style: wrapperStyle.join(";"),
+                style: styleToString({
+                    position: "relative",
+                    display: "inline-block",
+                    overflow: "hidden",
+                    "line-height": 0,
+                    background: "#0001",
+                    "border-radius": "0.5rem",
+                    "aspect-ratio":
+                        meta.width && meta.height
+                            ? `${meta.width}/${meta.height}`
+                            : undefined,
+                    "max-width": meta.width && meta.height ? "100%" : undefined,
+                    width:
+                        meta.width && meta.height
+                            ? `${meta.width}px`
+                            : undefined,
+                }),
             };
             img.children = children;
         }

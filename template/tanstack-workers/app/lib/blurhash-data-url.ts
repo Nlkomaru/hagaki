@@ -1,6 +1,17 @@
 import { decode as decodeBlurhash } from "blurhash";
 
-const DECODE_W = 32;
+const DECODE_WIDTH = 32;
+const BYTES_PER_RGB_PIXEL = 3;
+const BMP_FILE_HEADER_BYTES = 14;
+const DIB_HEADER_BYTES = 40;
+const BMP_HEADER_BYTES = BMP_FILE_HEADER_BYTES + DIB_HEADER_BYTES;
+const BMP_ROW_ALIGNMENT_BYTES = 4;
+const BMP_SIGNATURE_B = 0x42;
+const BMP_SIGNATURE_M = 0x4d;
+const BMP_PLANES = 1;
+const BMP_BITS_PER_PIXEL = 24;
+const BMP_NO_COMPRESSION = 0;
+const PIXELS_PER_METER_72_DPI = 2835;
 
 function bytesToBase64(bytes: Uint8Array): string {
     if (typeof Buffer !== "undefined") {
@@ -27,30 +38,30 @@ function rgbaToBmp(
     width: number,
     height: number,
 ): Uint8Array {
-    const rowSize = (3 * width + 3) & ~3;
+    const rowSize = alignedBmpRowSize(width);
     const pixelDataSize = rowSize * height;
-    const fileSize = 54 + pixelDataSize;
+    const fileSize = BMP_HEADER_BYTES + pixelDataSize;
     const buf = new Uint8Array(fileSize);
     const dv = new DataView(buf.buffer);
 
-    buf[0] = 0x42;
-    buf[1] = 0x4d;
+    buf[0] = BMP_SIGNATURE_B;
+    buf[1] = BMP_SIGNATURE_M;
     dv.setUint32(2, fileSize, true);
-    dv.setUint32(10, 54, true);
+    dv.setUint32(10, BMP_HEADER_BYTES, true);
 
-    dv.setUint32(14, 40, true);
+    dv.setUint32(14, DIB_HEADER_BYTES, true);
     dv.setInt32(18, width, true);
     // Negative height = top-down bitmap, matches the blurhash pixel order so
     // we don't have to flip rows.
     dv.setInt32(22, -height, true);
-    dv.setUint16(26, 1, true);
-    dv.setUint16(28, 24, true);
-    dv.setUint32(30, 0, true);
+    dv.setUint16(26, BMP_PLANES, true);
+    dv.setUint16(28, BMP_BITS_PER_PIXEL, true);
+    dv.setUint32(30, BMP_NO_COMPRESSION, true);
     dv.setUint32(34, pixelDataSize, true);
-    dv.setUint32(38, 2835, true);
-    dv.setUint32(42, 2835, true);
+    dv.setUint32(38, PIXELS_PER_METER_72_DPI, true);
+    dv.setUint32(42, PIXELS_PER_METER_72_DPI, true);
 
-    let dst = 54;
+    let dst = BMP_HEADER_BYTES;
     for (let y = 0; y < height; y++) {
         const rowStart = dst;
         for (let x = 0; x < width; x++) {
@@ -64,6 +75,14 @@ function rgbaToBmp(
     return buf;
 }
 
+function alignedBmpRowSize(width: number): number {
+    const rawRowBytes = BYTES_PER_RGB_PIXEL * width;
+    return (
+        Math.ceil(rawRowBytes / BMP_ROW_ALIGNMENT_BYTES) *
+        BMP_ROW_ALIGNMENT_BYTES
+    );
+}
+
 /**
  * Decode a blurhash and serialize it as a `data:image/bmp;base64,...` URL.
  * Designed to be called from a TanStack loader so the placeholder can be
@@ -74,11 +93,11 @@ export function blurhashToDataUrl(
     width?: number,
     height?: number,
 ): string {
-    const cw = DECODE_W;
+    const cw = DECODE_WIDTH;
     const ch =
         width && height
             ? Math.max(1, Math.round((height / width) * cw))
-            : DECODE_W;
+            : DECODE_WIDTH;
     try {
         const pixels = decodeBlurhash(hash, cw, ch);
         const bmp = rgbaToBmp(pixels, cw, ch);

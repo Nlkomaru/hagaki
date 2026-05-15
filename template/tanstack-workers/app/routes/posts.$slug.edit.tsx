@@ -8,6 +8,7 @@ import { Label } from "~/components/ui/label";
 import { cn } from "~/lib/utils";
 import { getHagakiClient } from "../lib/hagaki";
 import { encodeImageTitle } from "../lib/image-title";
+import { resolveImageUrl } from "../lib/image-url";
 import { validateAvifUpload } from "../lib/image-validation";
 import {
     addPending,
@@ -296,11 +297,7 @@ async function handleImagePreview(
         const entry = getPending(id);
         if (entry) return entry.previewBlobUrl;
     }
-    if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return src;
-    if (!cdnBaseUrl) return src;
-    const base = cdnBaseUrl.replace(/\/$/, "");
-    const path = src.startsWith("/") ? src : `/${src}`;
-    return `${base}${path}`;
+    return resolveImageUrl(src, cdnBaseUrl);
 }
 
 const PENDING_IMG_REGEX =
