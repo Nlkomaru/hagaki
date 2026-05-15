@@ -1,0 +1,10 @@
+node_modules
+.wrangler
+.dev.vars
+*.log
+.DS_Store
+
+# generated index files
+content/wiki.json
+content/categories.json
+content/img.json

@@ -1,0 +1,70 @@
+{
+    "name": "hagaki",
+    "version": "0.1.0",
+    "description": "Headless GitHub-backed markdown editor and content API",
+    "type": "module",
+    "license": "MIT",
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "import": "./dist/react.js"
+        },
+        "./auth/better-auth": {
+            "types": "./dist/auth/better-auth.d.ts",
+            "import": "./dist/auth/better-auth.js"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "typecheck": "tsc --noEmit",
+        "clean": "rm -rf dist",
+        "check": "biome check ./ --write",
+        "check:ci": "biome check ./"
+    },
+    "dependencies": {
+        "gray-matter": "^4.0.3",
+        "octokit": "^5.0.1"
+    },
+    "peerDependencies": {
+        "@mdxeditor/editor": "^3",
+        "react": ">=18",
+        "react-dom": ">=18"
+    },
+    "peerDependenciesMeta": {
+        "@mdxeditor/editor": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        },
+        "react-dom": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.3.9",
+        "@mdxeditor/editor": "^3.32.3",
+        "@mdxeditor/gurx": "^1.1.0",
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "lexical": "^0.34.0",
+        "react": "^19",
+        "react-dom": "^19",
+        "tsup": "^8.3.5",
+        "typescript": "^5.7.2"
+    },
+    "engines": {
+        "node": ">=18"
+    }
+}

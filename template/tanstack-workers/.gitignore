@@ -1,0 +1,15 @@
+node_modules
+dist
+.output
+.tanstack
+.vinxi
+.wrangler
+worker-configuration.d.ts
+*.log
+.DS_Store
+.idea
+.vscode
+.env
+.env.local
+.dev.vars
+app/routeTree.gen.ts

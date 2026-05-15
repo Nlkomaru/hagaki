@@ -1,0 +1,95 @@
+import matter from "gray-matter";
+import type { Octokit } from "octokit";
+import type { Committer } from "../auth/index.js";
+import { toUrlSlug } from "./slug.js";
+import type { SaveResult, WikiPostDetail } from "./types.js";
+
+export interface GitHubRepoConfig {
+    owner: string;
+    repo: string;
+    branch: string;
+    contentPath: string;
+}
+
+export interface SavePostOptions {
+    committer?: Committer;
+    commitMessage?: string;
+}
+
+export interface SavePostDeps {
+    octokit: Octokit;
+    repo: GitHubRepoConfig;
+}
+
+function toBase64(input: string): string {
+    if (typeof Buffer !== "undefined") {
+        return Buffer.from(input, "utf-8").toString("base64");
+    }
+    // Edge / browser fallback
+    const bytes = new TextEncoder().encode(input);
+    let bin = "";
+    for (const b of bytes) bin += String.fromCharCode(b);
+    // btoa exists in browsers and Workers
+    return btoa(bin);
+}
+
+export async function savePost(
+    deps: SavePostDeps,
+    form: WikiPostDetail,
+    options?: SavePostOptions,
+): Promise<SaveResult> {
+    const { octokit, repo } = deps;
+    const slug = toUrlSlug(form.slug);
+    const filePath = `${repo.contentPath.replace(/\/$/, "")}/${slug}.md`;
+
+    const content = matter.stringify(form.body || "", {
+        title: form.title,
+        slug: form.slug,
+        category: form.category,
+        description: form.description,
+        image: form.image || "",
+    });
+    const contentEncoded = toBase64(content);
+
+    let fileSha: string | undefined;
+    try {
+        const { data: fileData } = await octokit.rest.repos.getContent({
+            owner: repo.owner,
+            repo: repo.repo,
+            path: filePath,
+            ref: repo.branch,
+        });
+        if (!Array.isArray(fileData) && "sha" in fileData && fileData.sha) {
+            fileSha = fileData.sha;
+        }
+    } catch (e) {
+        if (
+            typeof e === "object" &&
+            e !== null &&
+            "status" in e &&
+            (e as { status?: number }).status !== 404
+        ) {
+            throw e;
+        }
+    }
+
+    const committer = options?.committer;
+    const { data: commitData } =
+        await octokit.rest.repos.createOrUpdateFileContents({
+            owner: repo.owner,
+            repo: repo.repo,
+            path: filePath,
+            message:
+                options?.commitMessage ?? `Add or update post: ${form.slug}.md`,
+            content: contentEncoded,
+            branch: repo.branch,
+            sha: fileSha,
+            ...(committer && { committer, author: committer }),
+        });
+
+    return {
+        commitSha: commitData.commit.sha ?? "",
+        commitUrl: commitData.commit.html_url ?? "",
+        path: filePath,
+    };
+}

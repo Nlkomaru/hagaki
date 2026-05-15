@@ -1,0 +1,39 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.3.9/schema.json",
+    "root": false,
+    "extends": "//",
+    "css": {
+        "parser": {
+            "cssModules": true,
+            "tailwindDirectives": true
+        }
+    },
+    "formatter": {
+        "enabled": true,
+        "includes": [
+            "**",
+            "!**/node_modules",
+            "!**/dist/**",
+            "!**/.output/**",
+            "!**/.tanstack/**",
+            "!**/.vinxi/**",
+            "!**/.wrangler/**",
+            "!worker-configuration.d.ts",
+            "!app/routeTree.gen.ts"
+        ]
+    },
+    "linter": {
+        "enabled": true,
+        "includes": [
+            "**",
+            "!**/node_modules",
+            "!**/dist/**",
+            "!**/.output/**",
+            "!**/.tanstack/**",
+            "!**/.vinxi/**",
+            "!**/.wrangler/**",
+            "!worker-configuration.d.ts",
+            "!app/routeTree.gen.ts"
+        ]
+    }
+}

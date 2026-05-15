@@ -1,0 +1,29 @@
+/**
+ * Wrangler config for the TanStack Start app deployed to Cloudflare Workers.
+ * Docs: https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "hagaki-template",
+    "main": "@tanstack/react-start/server-entry",
+    "compatibility_date": "2025-12-13",
+    "compatibility_flags": ["nodejs_compat_v2", "global_fetch_strictly_public"],
+    "assets": {
+        "binding": "ASSETS",
+        "directory": "./dist/client"
+    },
+    "observability": {
+        "enabled": true
+    },
+    "preview_urls": true,
+    "vars": {
+        // 非機密値はここに置けるが、HAGAKI_GITHUB_TOKEN は secret として
+        // `wrangler secret put HAGAKI_GITHUB_TOKEN` で設定すること。
+        // 機密でない値の例:
+        // "HAGAKI_GITHUB_OWNER": "your-org",
+        // "HAGAKI_GITHUB_REPO": "your-content-repo",
+        // "HAGAKI_GITHUB_BRANCH": "main",
+        // "HAGAKI_GITHUB_CONTENT_PATH": "content/wiki",
+        // "HAGAKI_CDN_BASE_URL": "https://content-hagaki.<subdomain>.workers.dev"
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "content-hagaki",
+    "compatibility_date": "2025-05-20",
+    "assets": {
+        "directory": "./content"
+    }
+}

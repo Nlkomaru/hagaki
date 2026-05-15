@@ -1,0 +1,4 @@
+packages:
+  - "."
+  - "template/tanstack-workers"
+  - "template/content-worker"
