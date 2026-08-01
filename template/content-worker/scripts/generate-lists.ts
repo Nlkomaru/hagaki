@@ -7,9 +7,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const CONTENT_DIR = path.join(__dirname, "../content");
-const WIKI_DIR = path.join(CONTENT_DIR, "wiki");
+const ARTICLE_DIR = path.join(CONTENT_DIR, "article");
 const CATEGORIES_DIR = path.join(CONTENT_DIR, "categories");
-const IMG_DIR = path.join(CONTENT_DIR, "img");
 
 function toUrlSlug(str: string): string {
     return encodeURIComponent(
@@ -30,20 +29,36 @@ async function ensureDir(dir: string) {
     await fs.mkdir(dir, { recursive: true });
 }
 
-async function generateWikiList() {
-    await ensureDir(WIKI_DIR);
-    const files = await fs.readdir(WIKI_DIR);
+/**
+ * Scan `content/article/<uuid>/index.md` and emit `article.json` so the
+ * editor / read-only view can resolve a slug to a uuid (and pull post
+ * metadata) without listing every file at runtime.
+ */
+async function generateArticleList() {
+    await ensureDir(ARTICLE_DIR);
+    const entries = await fs.readdir(ARTICLE_DIR, { withFileTypes: true });
     const posts: Array<Record<string, unknown>> = [];
-    for (const file of files) {
-        if (!file.endsWith(".md")) continue;
-        const raw = await fs.readFile(path.join(WIKI_DIR, file), "utf-8");
+    for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const indexPath = path.join(ARTICLE_DIR, entry.name, "index.md");
+        let raw: string;
+        try {
+            raw = await fs.readFile(indexPath, "utf-8");
+        } catch {
+            console.warn(`skip ${entry.name}: missing index.md`);
+            continue;
+        }
         const { data } = matter(raw);
+        if (!data.uuid) {
+            console.warn(`uuid missing in ${entry.name}/index.md`);
+        }
         if (!data.slug) {
-            console.warn(`slug missing in ${file}`);
+            console.warn(`slug missing in ${entry.name}/index.md`);
         }
         posts.push({
             title: data.title ?? "",
-            slug: toUrlSlug(data.slug ?? path.basename(file, ".md")),
+            slug: toUrlSlug(data.slug ?? entry.name),
+            uuid: data.uuid ?? entry.name,
             date: data.date ?? "",
             description: data.description ?? "",
             category: data.category ?? "",
@@ -51,10 +66,10 @@ async function generateWikiList() {
         });
     }
     await fs.writeFile(
-        path.join(CONTENT_DIR, "wiki.json"),
+        path.join(CONTENT_DIR, "article.json"),
         `${JSON.stringify(posts, null, 2)}\n`,
     );
-    console.info(`wiki.json: ${posts.length} posts`);
+    console.info(`article.json: ${posts.length} posts`);
 }
 
 async function generateCategoriesList() {
@@ -73,21 +88,9 @@ async function generateCategoriesList() {
     console.info(`categories.json: ${categories.length} categories`);
 }
 
-async function generateImagesList() {
-    await ensureDir(IMG_DIR);
-    const files = await fs.readdir(IMG_DIR);
-    const images = files.filter((f) => !f.startsWith("."));
-    await fs.writeFile(
-        path.join(CONTENT_DIR, "img.json"),
-        `${JSON.stringify(images, null, 2)}\n`,
-    );
-    console.info(`img.json: ${images.length} images`);
-}
-
 async function main() {
-    await generateWikiList();
+    await generateArticleList();
     await generateCategoriesList();
-    await generateImagesList();
 }
 
 main().catch((err) => {

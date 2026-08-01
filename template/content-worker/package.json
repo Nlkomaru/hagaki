@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "generate": "tsx scripts/generate-lists.ts",
+        "migrate": "tsx scripts/migrate-to-article.ts",
         "dev": "pnpm run generate && wrangler dev",
         "deploy": "pnpm run generate && wrangler deploy"
     },

@@ -8,28 +8,31 @@ hagaki の `HAGAKI_CDN_BASE_URL` が指す先です。
 
 ```
 content/
-├── wiki/            # 記事の Markdown (frontmatter 必須)
-├── categories/      # カテゴリ JSON
-├── img/             # 画像
-├── wiki.json        # ← scripts/generate-lists.ts が生成
-├── categories.json  # ← 同上
-└── img.json         # ← 同上
+├── article/                  # 記事ごとのディレクトリ (uuid 名)
+│   └── <uuid>/
+│       ├── index.md          #   記事本体 (frontmatter 必須: slug, uuid)
+│       └── assets/<file>     #   その記事専用の画像
+├── categories/               # カテゴリ JSON
+├── article.json              # ← scripts/generate-lists.ts が生成
+└── categories.json           # ← 同上
 ```
 
 `*.json` のインデックスファイルは git 管理外。デプロイ前に必ず
 `pnpm generate` で作り直すこと。
 
+旧 `wiki/` + `img/` レイアウトからの移行は `pnpm migrate`
+(`scripts/migrate-to-article.ts`) で行えます。
+
 ## 配信される URL
 
-例: `https://content-hagaki.nikomaru.workers.dev/wiki.json`
+例: `https://content-hagaki.nikomaru.workers.dev/article.json`
 
 | パス | 内容 |
 |---|---|
-| `/wiki.json` | 記事一覧 (`hagaki.posts.list()` が読む) |
-| `/wiki/<slug>.md` | 個別記事 (`hagaki.posts.getBySlug()` が読む) |
+| `/article.json` | 記事一覧 (`hagaki.posts.list()` が読む。slug→uuid 解決にも使う) |
+| `/article/<uuid>/index.md` | 個別記事 (`hagaki.posts.getBySlug()` / `getByUuid()` が読む) |
+| `/article/<uuid>/assets/<filename>` | その記事の画像本体 |
 | `/categories.json` | カテゴリ一覧 |
-| `/img.json` | 画像ファイル名一覧 |
-| `/img/<filename>` | 画像本体 |
 
 ## コマンド
 
@@ -37,7 +40,7 @@ content/
 # 依存をインストール (workspace ルートで)
 pnpm install
 
-# wiki.json などのインデックスを生成
+# article.json などのインデックスを生成
 pnpm --filter hagaki-template-content generate
 
 # ローカル開発 (http://localhost:8787)
