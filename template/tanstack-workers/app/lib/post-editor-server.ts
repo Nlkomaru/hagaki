@@ -34,7 +34,7 @@ export const getEditorPostFn = createServerFn({ method: "GET" })
     .inputValidator((input: GetEditorPostInput) => input)
     .handler(async ({ data }) => {
         const { env } = await import("cloudflare:workers");
-        const client = getHagakiClient();
+        const client = await getHagakiClient();
         const existing = await client.posts.getBySlug(data.slug);
         const post = existing
             ? { ...existing, body: stripLegacyPendingImages(existing.body) }
@@ -93,7 +93,7 @@ export const commitPostFn = createServerFn({ method: "POST" })
         for (const path of deletePaths) assertOwned(path, "delete");
 
         const { default: matter } = await import("gray-matter");
-        const client = getHagakiClient();
+        const client = await getHagakiClient();
         const postPath = `${articleDir}/index.md`;
         const markdown = matter.stringify(
             data.post.body || "",

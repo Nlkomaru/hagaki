@@ -28,5 +28,13 @@
         // "HAGAKI_GITHUB_BRANCH": "main",
         // "HAGAKI_GITHUB_CONTENT_PATH": "content/wiki",
         // "HAGAKI_CDN_BASE_URL": "https://content-hagaki.<subdomain>.workers.dev"
-    }
+    },
+    // HAGAKI_GITHUB_TOKEN は Cloudflare Secrets Store (BSM: hagaki/HAGAKI_GITHUB_TOKEN) から供給する
+    "secrets_store_secrets": [
+        {
+            "binding": "HAGAKI_GITHUB_TOKEN",
+            "store_id": "d36d5a11ea07462c83bb21a0e9ccb811",
+            "secret_name": "hagaki_HAGAKI_GITHUB_TOKEN"
+        }
+    ]
 }

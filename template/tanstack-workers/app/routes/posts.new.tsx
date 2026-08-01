@@ -10,7 +10,7 @@ import { Label } from "~/components/ui/label";
 import { getHagakiClient } from "../lib/hagaki";
 
 const newPostDataFn = createServerFn({ method: "GET" }).handler(async () => {
-    const client = getHagakiClient();
+    const client = await getHagakiClient();
     const [categories, posts] = await Promise.all([
         client.categories.list(),
         client.posts.list(),

@@ -12,7 +12,7 @@ const getRenderedPostFn = createServerFn({ method: "GET" })
     .inputValidator((slug: string) => slug)
     .handler(async ({ data: slug }) => {
         const { env } = await import("cloudflare:workers");
-        const client = getHagakiClient();
+        const client = await getHagakiClient();
         const post = await client.posts.getBySlug(slug);
         if (!post) return null;
         const cdnBaseUrl = getStringEnv(env, "HAGAKI_CDN_BASE_URL");

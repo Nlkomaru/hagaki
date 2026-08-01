@@ -3,13 +3,14 @@ import type { WikiCategory } from "hagaki";
 import { getHagakiClient } from "./hagaki";
 
 export const listCategoriesFn = createServerFn({ method: "GET" }).handler(
-    async () => getHagakiClient().categories.list(),
+    async () => (await getHagakiClient()).categories.list(),
 );
 
 export const getCategoryFn = createServerFn({ method: "GET" })
     .inputValidator((slug: string) => slug)
     .handler(async ({ data: slug }) => {
-        const list = await getHagakiClient().categories.list();
+        const client = await getHagakiClient();
+        const list = await client.categories.list();
         return list.find((c) => c.slug === slug) ?? null;
     });
 
@@ -25,7 +26,7 @@ export const commitCategoryFn = createServerFn({ method: "POST" })
                 `commitCategoryFn: invalid slug "${data.slug}" (allowed: a-z 0-9 -)`,
             );
         }
-        const client = getHagakiClient();
+        const client = await getHagakiClient();
         const path = `content/categories/${data.slug}.json`;
         const content = `${JSON.stringify(
             {

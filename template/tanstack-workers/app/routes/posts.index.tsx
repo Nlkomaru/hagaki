@@ -13,7 +13,7 @@ import { Separator } from "~/components/ui/separator";
 import { getHagakiClient } from "../lib/hagaki";
 
 const listPostsFn = createServerFn({ method: "GET" }).handler(async () => {
-    const client = getHagakiClient();
+    const client = await getHagakiClient();
     return client.posts.list({ sortBy: "date", order: "desc" });
 });
 
