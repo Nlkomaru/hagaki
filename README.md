@@ -26,7 +26,7 @@ const hagaki = createHagakiClient({
     owner: "morinoparty",
     repo: "wiki-contentdev",
     branch: "main",
-    contentPath: "content/wiki",
+    contentPath: "content/article", // 各記事は content/article/<uuid>/index.md
     auth: process.env.GITHUB_TOKEN!, // string でも () => Promise<string> でも可
   },
   content: {

@@ -8,12 +8,36 @@ importers:
 
   .:
     dependencies:
+      '@jsquash/avif':
+        specifier: ^2.0.0
+        version: 2.1.1
+      blurhash:
+        specifier: ^2.0.5
+        version: 2.0.5
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
       octokit:
         specifier: ^5.0.1
         version: 5.0.5
+      rehype-stringify:
+        specifier: ^10.0.1
+        version: 10.0.1
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0
+      remark-rehype:
+        specifier: ^11.1.2
+        version: 11.1.2
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.1
     devDependencies:
       '@biomejs/biome':
         specifier: 2.3.9

@@ -5,7 +5,6 @@ export type {
 } from "./api/client.js";
 export { createHagakiClient } from "./api/client.js";
 export type { ContentConfig } from "./api/content.js";
-export type { SaveImageInput } from "./api/images.js";
 export type { SavePostOptions } from "./api/posts.js";
 export { toUrlSlug } from "./api/slug.js";
 export type {
@@ -18,10 +17,10 @@ export type {
     GetAllPostsOptions,
     SaveResult,
     WikiCategory,
-    WikiImageFile,
     WikiPost,
     WikiPostDetail,
 } from "./api/types.js";
+export { resolveCdnUrl } from "./api/url.js";
 
 export type { Committer } from "./auth/index.js";
 export { makeCommitter } from "./auth/index.js";

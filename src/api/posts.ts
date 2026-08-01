@@ -1,13 +1,16 @@
 import matter from "gray-matter";
 import type { Octokit } from "octokit";
 import type { Committer } from "../auth/index.js";
-import { toUrlSlug } from "./slug.js";
 import type { SaveResult, WikiPostDetail } from "./types.js";
 
 export interface GitHubRepoConfig {
     owner: string;
     repo: string;
     branch: string;
+    /**
+     * Repo directory holding article subdirectories. Each article lives at
+     * `${contentPath}/<uuid>/index.md`. Defaults to `content/article`.
+     */
     contentPath: string;
 }
 
@@ -39,12 +42,17 @@ export async function savePost(
     options?: SavePostOptions,
 ): Promise<SaveResult> {
     const { octokit, repo } = deps;
-    const slug = toUrlSlug(form.slug);
-    const filePath = `${repo.contentPath.replace(/\/$/, "")}/${slug}.md`;
+    if (!form.uuid) {
+        throw new Error(
+            "savePost: WikiPostDetail.uuid is required — generate one before saving",
+        );
+    }
+    const filePath = `${repo.contentPath.replace(/\/$/, "")}/${form.uuid}/index.md`;
 
     const content = matter.stringify(form.body || "", {
         title: form.title,
         slug: form.slug,
+        uuid: form.uuid,
         category: form.category,
         description: form.description,
         image: form.image || "",

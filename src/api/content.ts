@@ -2,7 +2,6 @@ import matter from "gray-matter";
 import type {
     GetAllPostsOptions,
     WikiCategory,
-    WikiImageFile,
     WikiPost,
     WikiPostDetail,
 } from "./types.js";
@@ -10,10 +9,15 @@ import type {
 export interface ContentConfig {
     cdnBaseUrl: string;
     paths?: {
+        /** Manifest listing every article (defaults to `/article.json`). */
         posts?: string;
+        /** Manifest listing every category (defaults to `/categories.json`). */
         categories?: string;
-        images?: string;
-        postBySlug?: (slug: string) => string;
+        /**
+         * Resolve a post's `index.md` URL given its directory uuid. Defaults
+         * to `/article/<uuid>/index.md`.
+         */
+        postByUuid?: (uuid: string) => string;
     };
 }
 
@@ -29,18 +33,15 @@ function joinUrl(base: string, path: string): string {
 }
 
 function postsPath(c: ContentConfig): string {
-    return c.paths?.posts ?? "/wiki.json";
+    return c.paths?.posts ?? "/article.json";
 }
 function categoriesPath(c: ContentConfig): string {
     return c.paths?.categories ?? "/categories.json";
 }
-function imagesPath(c: ContentConfig): string {
-    return c.paths?.images ?? "/img.json";
-}
-function postBySlugPath(c: ContentConfig, slug: string): string {
-    const fn = c.paths?.postBySlug;
-    if (fn) return fn(slug);
-    return `/wiki/${encodeURIComponent(slug)}.md`;
+function postByUuidPath(c: ContentConfig, uuid: string): string {
+    const fn = c.paths?.postByUuid;
+    if (fn) return fn(uuid);
+    return `/article/${encodeURIComponent(uuid)}/index.md`;
 }
 
 export async function listPosts(
@@ -71,13 +72,13 @@ export async function listPosts(
     return posts;
 }
 
-export async function getPostBySlug(
+export async function getPostByUuid(
     deps: ContentFetcherDeps,
-    slug: string,
+    uuid: string,
 ): Promise<WikiPostDetail | null> {
     const url = joinUrl(
         deps.config.cdnBaseUrl,
-        postBySlugPath(deps.config, slug),
+        postByUuidPath(deps.config, uuid),
     );
     const res = await deps.fetchImpl(url);
     if (!res.ok) return null;
@@ -85,13 +86,29 @@ export async function getPostBySlug(
     const { data, content } = matter(markdown);
     return {
         title: (data.title as string | undefined) ?? "",
-        slug: (data.slug as string | undefined) ?? slug,
+        slug: (data.slug as string | undefined) ?? "",
+        uuid: (data.uuid as string | undefined) ?? uuid,
         description: (data.description as string | undefined) ?? "",
         date: (data.date as string | undefined) ?? "",
         category: (data.category as string | undefined) ?? "",
         image: data.image as string | undefined,
         body: content,
     };
+}
+
+/**
+ * Resolve a post by its human-facing slug. Fetches the article manifest,
+ * looks up the matching uuid, then loads `/article/<uuid>/index.md`. Returns
+ * `null` if no post has that slug.
+ */
+export async function getPostBySlug(
+    deps: ContentFetcherDeps,
+    slug: string,
+): Promise<WikiPostDetail | null> {
+    const posts = await listPosts(deps);
+    const match = posts.find((p) => p.slug === slug);
+    if (!match) return null;
+    return getPostByUuid(deps, match.uuid);
 }
 
 export async function listCategories(
@@ -106,13 +123,4 @@ export async function listCategories(
         return a.slug.localeCompare(b.slug);
     });
     return categories;
-}
-
-export async function listImages(
-    deps: ContentFetcherDeps,
-): Promise<WikiImageFile[]> {
-    const url = joinUrl(deps.config.cdnBaseUrl, imagesPath(deps.config));
-    const res = await deps.fetchImpl(url);
-    if (!res.ok) throw new Error(`Failed to fetch images: ${res.status}`);
-    return (await res.json()) as WikiImageFile[];
 }

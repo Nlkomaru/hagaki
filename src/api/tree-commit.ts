@@ -8,7 +8,12 @@ export interface CommitFile {
 }
 
 export interface CommitFilesInput {
-    files: CommitFile[];
+    files?: CommitFile[];
+    /**
+     * Repository paths to remove in the same commit. Each path is recorded as
+     * a null-sha entry in the new tree, which tells GitHub to drop it.
+     */
+    deletePaths?: string[];
     committer?: Committer;
     commitMessage: string;
 }
@@ -16,7 +21,10 @@ export interface CommitFilesInput {
 export interface CommitFilesResult {
     commitSha: string;
     commitUrl: string;
+    /** Added or updated paths. */
     paths: string[];
+    /** Paths removed in this commit, if any. */
+    deletedPaths: string[];
 }
 
 export interface CommitFilesDeps {
@@ -45,15 +53,20 @@ function toBase64(input: ArrayBuffer | Uint8Array | string): string {
 /**
  * Commit multiple files as a single commit on the configured branch via the
  * GitHub Git Data API (blobs → tree → commit → updateRef). Use this when you
- * want atomicity (e.g. a markdown post + the images it references).
+ * want atomicity (e.g. a markdown post + the images it references, or a post
+ * update + the images it no longer references).
  */
 export async function commitFiles(
     deps: CommitFilesDeps,
     input: CommitFilesInput,
 ): Promise<CommitFilesResult> {
     const { octokit, owner, repo, branch } = deps;
-    if (input.files.length === 0) {
-        throw new Error("commitFiles: at least one file is required");
+    const files = input.files ?? [];
+    const deletePaths = dedupe(input.deletePaths ?? []);
+    if (files.length === 0 && deletePaths.length === 0) {
+        throw new Error(
+            "commitFiles: at least one file or deletePath is required",
+        );
     }
 
     const { data: refData } = await octokit.rest.git.getRef({
@@ -71,7 +84,7 @@ export async function commitFiles(
     const baseTreeSha = baseCommit.tree.sha;
 
     const blobs = await Promise.all(
-        input.files.map(async (file) => {
+        files.map(async (file) => {
             const { data } = await octokit.rest.git.createBlob({
                 owner,
                 repo,
@@ -82,16 +95,30 @@ export async function commitFiles(
         }),
     );
 
+    // GitHub's createTree treats a tree entry with `sha: null` as "delete this
+    // path from the resulting tree". We cast because Octokit's generated type
+    // wants `string` but the underlying API documents `null` as the delete
+    // sentinel.
+    const deleteEntries = deletePaths.map((path) => ({
+        path,
+        mode: "100644" as const,
+        type: "blob" as const,
+        sha: null as unknown as string,
+    }));
+
     const { data: tree } = await octokit.rest.git.createTree({
         owner,
         repo,
         base_tree: baseTreeSha,
-        tree: blobs.map((b) => ({
-            path: b.path,
-            mode: "100644",
-            type: "blob",
-            sha: b.sha,
-        })),
+        tree: [
+            ...blobs.map((b) => ({
+                path: b.path,
+                mode: "100644" as const,
+                type: "blob" as const,
+                sha: b.sha,
+            })),
+            ...deleteEntries,
+        ],
     });
 
     const committer = input.committer;
@@ -114,6 +141,11 @@ export async function commitFiles(
     return {
         commitSha: commit.sha,
         commitUrl: commit.html_url,
-        paths: input.files.map((f) => f.path),
+        paths: files.map((f) => f.path),
+        deletedPaths: deletePaths,
     };
+}
+
+function dedupe(values: string[]): string[] {
+    return Array.from(new Set(values));
 }

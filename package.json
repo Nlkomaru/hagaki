@@ -18,6 +18,18 @@
             "types": "./dist/react.d.ts",
             "import": "./dist/react.js"
         },
+        "./image": {
+            "types": "./dist/image.d.ts",
+            "import": "./dist/image.js"
+        },
+        "./markdown": {
+            "types": "./dist/markdown.d.ts",
+            "import": "./dist/markdown.js"
+        },
+        "./pending-images": {
+            "types": "./dist/pending-images.d.ts",
+            "import": "./dist/pending-images.js"
+        },
         "./auth/better-auth": {
             "types": "./dist/auth/better-auth.d.ts",
             "import": "./dist/auth/better-auth.js"
@@ -32,8 +44,16 @@
         "check:ci": "biome check ./"
     },
     "dependencies": {
+        "@jsquash/avif": "^2.0.0",
+        "blurhash": "^2.0.5",
         "gray-matter": "^4.0.3",
-        "octokit": "^5.0.1"
+        "octokit": "^5.0.1",
+        "rehype-stringify": "^10.0.1",
+        "remark-gfm": "^4.0.1",
+        "remark-parse": "^11.0.0",
+        "remark-rehype": "^11.1.2",
+        "unified": "^11.0.5",
+        "uuid": "^11.1.0"
     },
     "peerDependencies": {
         "@mdxeditor/editor": "^3",

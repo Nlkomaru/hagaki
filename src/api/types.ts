@@ -1,6 +1,13 @@
 export interface WikiPost {
     title: string;
     slug: string;
+    /**
+     * Stable directory identifier. A post lives at
+     * `content/article/<uuid>/index.md` and its images at
+     * `content/article/<uuid>/assets/`. `slug` may change over the post's
+     * lifetime; `uuid` never does.
+     */
+    uuid: string;
     description: string;
     date: string;
     category: string;
@@ -22,8 +29,6 @@ export interface WikiCategory {
     body: string;
     hasPosition: boolean;
 }
-
-export type WikiImageFile = string;
 
 export interface SaveResult {
     commitSha: string;

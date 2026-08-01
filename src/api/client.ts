@@ -3,11 +3,10 @@ import { getCommitWithChecks } from "./commits.js";
 import {
     type ContentConfig,
     getPostBySlug as fetchPostBySlug,
+    getPostByUuid as fetchPostByUuid,
     listCategories,
-    listImages,
     listPosts,
 } from "./content.js";
-import { type SaveImageInput, saveImage } from "./images.js";
 import { type SavePostOptions, savePost } from "./posts.js";
 import {
     type CommitFilesInput,
@@ -19,7 +18,6 @@ import type {
     GetAllPostsOptions,
     SaveResult,
     WikiCategory,
-    WikiImageFile,
     WikiPost,
     WikiPostDetail,
 } from "./types.js";
@@ -32,7 +30,6 @@ export interface HagakiConfig {
         repo: string;
         branch?: string;
         contentPath?: string;
-        imagePath?: string;
         auth: AuthToken;
     };
     content?: ContentConfig;
@@ -43,16 +40,13 @@ export interface HagakiClient {
     posts: {
         list(options?: GetAllPostsOptions): Promise<WikiPost[]>;
         getBySlug(slug: string): Promise<WikiPostDetail | null>;
+        getByUuid(uuid: string): Promise<WikiPostDetail | null>;
         save(
             post: WikiPostDetail,
             options?: SavePostOptions,
         ): Promise<SaveResult>;
     };
     categories: { list(): Promise<WikiCategory[]> };
-    images: {
-        list(): Promise<WikiImageFile[]>;
-        save(input: SaveImageInput): Promise<SaveResult>;
-    };
     commits: {
         getWithChecks(sha: string): Promise<CommitWithChecks>;
         commitFiles(input: CommitFilesInput): Promise<CommitFilesResult>;
@@ -65,8 +59,7 @@ async function resolveAuth(auth: AuthToken): Promise<string> {
 
 export function createHagakiClient(config: HagakiConfig): HagakiClient {
     const branch = config.github.branch ?? "main";
-    const contentPath = config.github.contentPath ?? "content/wiki";
-    const imagePath = config.github.imagePath ?? "content/img";
+    const contentPath = config.github.contentPath ?? "content/article";
     const fetchImpl: typeof fetch =
         config.fetch ?? globalThis.fetch.bind(globalThis);
 
@@ -98,6 +91,12 @@ export function createHagakiClient(config: HagakiConfig): HagakiClient {
                     slug,
                 );
             },
+            async getByUuid(uuid) {
+                return fetchPostByUuid(
+                    { config: requireContent(), fetchImpl },
+                    uuid,
+                );
+            },
             async save(post, options) {
                 const octokit = await getOctokit();
                 return savePost(
@@ -118,26 +117,6 @@ export function createHagakiClient(config: HagakiConfig): HagakiClient {
         categories: {
             async list() {
                 return listCategories({ config: requireContent(), fetchImpl });
-            },
-        },
-        images: {
-            async list() {
-                return listImages({ config: requireContent(), fetchImpl });
-            },
-            async save(input) {
-                const octokit = await getOctokit();
-                return saveImage(
-                    {
-                        octokit,
-                        repo: {
-                            owner: config.github.owner,
-                            repo: config.github.repo,
-                            branch,
-                            imagePath,
-                        },
-                    },
-                    input,
-                );
             },
         },
         commits: {
