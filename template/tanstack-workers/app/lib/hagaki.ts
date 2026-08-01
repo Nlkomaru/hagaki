@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { createHagakiClient, type HagakiClient } from "hagaki";
+import { getOptionalStringEnv } from "./server-env";
 
 let cached: HagakiClient | null = null;
 
@@ -9,7 +10,7 @@ let cached: HagakiClient | null = null;
  * - HAGAKI_GITHUB_OWNER
  * - HAGAKI_GITHUB_REPO
  * - HAGAKI_GITHUB_BRANCH (optional, default "main")
- * - HAGAKI_GITHUB_CONTENT_PATH (optional, default "content/wiki")
+ * - HAGAKI_GITHUB_CONTENT_PATH (optional, default "content/article")
  * - HAGAKI_GITHUB_TOKEN
  * - HAGAKI_CDN_BASE_URL
  */
@@ -25,7 +26,7 @@ export function getHagakiClient(): HagakiClient {
             repo,
             branch: readEnv("HAGAKI_GITHUB_BRANCH") ?? "main",
             contentPath:
-                readEnv("HAGAKI_GITHUB_CONTENT_PATH") ?? "content/wiki",
+                readEnv("HAGAKI_GITHUB_CONTENT_PATH") ?? "content/article",
             auth: token,
         },
         content: { cdnBaseUrl },
@@ -34,8 +35,7 @@ export function getHagakiClient(): HagakiClient {
 }
 
 function readEnv(key: string): string | undefined {
-    const value = (env as unknown as Record<string, unknown>)[key];
-    return typeof value === "string" && value.length > 0 ? value : undefined;
+    return getOptionalStringEnv(env, key);
 }
 
 function requireEnv(key: string): string {
