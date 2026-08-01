@@ -1,58 +1,100 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowRight, FolderTree, Plus } from "lucide-react";
+import { Button } from "~/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "~/components/ui/card";
 
 export const Route = createFileRoute("/")({
     component: HomePage,
 });
 
+const ENV_VARS: Array<[string, string]> = [
+    ["HAGAKI_GITHUB_OWNER", "必須"],
+    ["HAGAKI_GITHUB_REPO", "必須"],
+    ["HAGAKI_GITHUB_TOKEN", "必須"],
+    ["HAGAKI_CDN_BASE_URL", "必須"],
+    ["HAGAKI_GITHUB_BRANCH", '任意 · default "main"'],
+    ["HAGAKI_GITHUB_CONTENT_PATH", '任意 · default "content/article"'],
+];
+
 function HomePage() {
     return (
-        <section className="flex flex-col gap-4">
-            <h1>hagaki template</h1>
-            <p>
-                hagaki を使った最小構成の TanStack Start テンプレートです。
-                GitHub をストレージにマークダウン記事を読み書きします。
-            </p>
-            <h2>セットアップ</h2>
-            <ol className="pl-5 list-decimal space-y-1">
-                <li>
-                    <code>.env</code> と <code>.dev.vars</code>{" "}
-                    に必要な環境変数を設定 (README.md 参照)
-                </li>
-                <li>
-                    <code>pnpm dev</code> で開発サーバを起動
-                </li>
-                <li>
-                    <Link
-                        to="/posts"
-                        className="text-primary underline underline-offset-4"
-                    >
-                        /posts
-                    </Link>{" "}
-                    で記事一覧を確認
-                </li>
-            </ol>
-            <h2>必要な環境変数</h2>
-            <ul className="pl-5 list-disc space-y-0.5">
-                <li>
-                    <code>HAGAKI_GITHUB_OWNER</code>
-                </li>
-                <li>
-                    <code>HAGAKI_GITHUB_REPO</code>
-                </li>
-                <li>
-                    <code>HAGAKI_GITHUB_TOKEN</code>
-                </li>
-                <li>
-                    <code>HAGAKI_CDN_BASE_URL</code>
-                </li>
-                <li>
-                    <code>HAGAKI_GITHUB_BRANCH</code> (任意, default "main")
-                </li>
-                <li>
-                    <code>HAGAKI_GITHUB_CONTENT_PATH</code> (任意, default
-                    "content/wiki")
-                </li>
-            </ul>
+        <section className="flex flex-col gap-8">
+            <div>
+                <h1 className="mb-2">hagaki template</h1>
+                <p className="text-muted-foreground mb-0">
+                    hagaki を使った最小構成の TanStack Start テンプレート。
+                    GitHub をストレージにマークダウン記事を読み書きします。
+                </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">記事</CardTitle>
+                        <CardDescription>
+                            記事の一覧・作成・編集
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex gap-2">
+                        <Button asChild size="sm">
+                            <Link to="/posts">
+                                一覧
+                                <ArrowRight />
+                            </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                            <Link to="/posts/new">
+                                <Plus />
+                                新規
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">カテゴリ</CardTitle>
+                        <CardDescription>カテゴリの管理</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button asChild size="sm" variant="outline">
+                            <Link to="/categories">
+                                <FolderTree />
+                                管理
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">必要な環境変数</CardTitle>
+                    <CardDescription>
+                        <code>.env</code> / <code>.dev.vars</code> に設定
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <dl className="flex flex-col divide-y divide-border text-sm">
+                        {ENV_VARS.map(([name, note]) => (
+                            <div
+                                key={name}
+                                className="flex items-center justify-between gap-4 py-2 first:pt-0 last:pb-0"
+                            >
+                                <code>{name}</code>
+                                <span className="text-xs text-muted-foreground">
+                                    {note}
+                                </span>
+                            </div>
+                        ))}
+                    </dl>
+                </CardContent>
+            </Card>
         </section>
     );
 }

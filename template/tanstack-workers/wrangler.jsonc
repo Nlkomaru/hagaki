@@ -17,6 +17,9 @@
     },
     "preview_urls": true,
     "vars": {
+        "HAGAKI_CDN_BASE_URL": "https://content-hagaki.nikomaru.workers.dev",
+        "HAGAKI_GITHUB_OWNER": "nlkomaru",
+        "HAGAKI_GITHUB_REPO": "hagaki-content"
         // 非機密値はここに置けるが、HAGAKI_GITHUB_TOKEN は secret として
         // `wrangler secret put HAGAKI_GITHUB_TOKEN` で設定すること。
         // 機密でない値の例:

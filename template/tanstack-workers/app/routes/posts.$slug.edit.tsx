@@ -1,24 +1,27 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import type { WikiPostDetail } from "hagaki";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { diffRemovedImagePaths } from "hagaki/markdown";
+import {
+    clearAll as clearPending,
+    hasUnprocessed,
+    subscribe as subscribePending,
+} from "hagaki/pending-images";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { CategoryInput } from "~/components/CategoryInput";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { getHagakiClient } from "../lib/hagaki";
-import { encodeImageTitle } from "../lib/image-title";
-import { resolveImageUrl } from "../lib/image-url";
-import { validateAvifUpload } from "../lib/image-validation";
+import { imagePathsFor } from "../lib/image-paths";
 import {
-    addPending,
-    clearAll as clearPending,
-    getPending,
-    hasUnprocessed,
-    idFromPendingUrl,
-    pendingUrlFor,
-    subscribe as subscribePending,
-} from "../lib/pending-image-store";
+    buildPostPayload,
+    handleImagePreview,
+    handleImageUpload,
+} from "../lib/post-editor-images";
+import { commitPostFn, getEditorPostFn } from "../lib/post-editor-server";
 
 // MDXEditor (透過に hagaki が wrap している) は client-only なので、
 // `~/components/editor` (composite なツールバー+コンテンツのスタイル定義) を
@@ -27,132 +30,48 @@ const Editor = lazy(() =>
     import("~/components/editor").then((m) => ({ default: m.Editor })),
 );
 
-interface UploadedImage {
-    /** Repository path, e.g. `content/img/abc.avif`. */
-    path: string;
-    /** Base64-encoded AVIF bytes. */
-    avifBase64: string;
+interface EditSearch {
+    /** Seed values carried from `/posts/new` for a brand-new post. */
+    title?: string;
+    category?: string;
+    /** uuid pinned in the URL after the first save (see #2 mitigation). */
+    uuid?: string;
 }
 
-interface CommitPostInput {
-    post: WikiPostDetail;
-    /** Already-validated, client-encoded AVIF images keyed by repo path. */
-    images: UploadedImage[];
-}
-
-/**
- * Strip any `pending:<id>` image references from a loaded markdown body.
- * These are session-local placeholders; if one made it into GitHub (legacy
- * bug, manual edit, etc.) it would never resolve, so we drop the whole image
- * node on load rather than leave a broken `<img>` in the editor.
- */
-const LEGACY_PENDING_IMG_REGEX =
-    /!\[[^\]]*\]\(pending\\?:[a-f0-9-]+(?:\s+"[^"]*")?\)/g;
-
-function stripLegacyPendingImages(body: string): string {
-    return body.replace(LEGACY_PENDING_IMG_REGEX, "");
-}
-
-const getPostFn = createServerFn({ method: "GET" })
-    .inputValidator((slug: string) => slug)
-    .handler(async ({ data: slug }) => {
-        const { env } = await import("cloudflare:workers");
-        const client = getHagakiClient();
-        const post = await client.posts.getBySlug(slug);
-        const cdnBaseUrl =
-            (env as unknown as Record<string, string | undefined>)
-                .HAGAKI_CDN_BASE_URL ?? "";
-        const cleaned = post
-            ? { ...post, body: stripLegacyPendingImages(post.body) }
-            : {
-                  title: "",
-                  slug,
-                  description: "",
-                  date: new Date().toISOString().slice(0, 10),
-                  category: "",
-                  image: "",
-                  body: "",
-              };
-        return { post: cleaned, cdnBaseUrl };
-    });
-
-/**
- * Atomic save: validates every image, then commits the markdown post AND all
- * referenced images in a single GitHub tree commit. This way the editor never
- * leaves orphan blobs behind (e.g. when the user inserts the wrong image),
- * and `git revert` rolls back the post and its images together.
- */
-const commitPostFn = createServerFn({ method: "POST" })
-    .inputValidator((input: CommitPostInput) => input)
-    .handler(async ({ data }) => {
-        for (const img of data.images) {
-            const bytes = decodeBase64(img.avifBase64);
-            validateAvifUpload(bytes);
-        }
-        const { default: matter } = await import("gray-matter");
-        const client = getHagakiClient();
-
-        const postPath = `content/wiki/${data.post.slug}.md`;
-        const markdown = matter.stringify(data.post.body || "", {
-            title: data.post.title,
-            slug: data.post.slug,
-            category: data.post.category,
-            description: data.post.description,
-            image: data.post.image || "",
-        });
-
-        const files = [
-            ...data.images.map((img) => ({
-                path: img.path,
-                content: decodeBase64(img.avifBase64),
-            })),
-            { path: postPath, content: markdown },
-        ];
-
-        const result = await client.commits.commitFiles({
-            files,
-            commitMessage:
-                data.images.length > 0
-                    ? `Update post: ${data.post.slug} (+ ${data.images.length} image${data.images.length === 1 ? "" : "s"})`
-                    : `Update post: ${data.post.slug}`,
-        });
-        return result;
-    });
-
-function decodeBase64(b64: string): Uint8Array {
-    if (typeof Buffer !== "undefined") {
-        return new Uint8Array(Buffer.from(b64, "base64"));
-    }
-    const bin = atob(b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes;
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-    if (typeof Buffer !== "undefined") {
-        return Buffer.from(bytes).toString("base64");
-    }
-    let bin = "";
-    for (const b of bytes) bin += String.fromCharCode(b);
-    return btoa(bin);
-}
+const str = (v: unknown): string | undefined =>
+    typeof v === "string" && v.length > 0 ? v : undefined;
 
 export const Route = createFileRoute("/posts/$slug/edit")({
-    loader: ({ params }) => getPostFn({ data: params.slug }),
+    validateSearch: (search: Record<string, unknown>): EditSearch => ({
+        title: str(search.title),
+        category: str(search.category),
+        uuid: str(search.uuid),
+    }),
+    loaderDeps: ({ search }) => search,
+    loader: ({ params, deps }) =>
+        getEditorPostFn({
+            data: {
+                slug: params.slug,
+                seed: { title: deps.title, category: deps.category },
+                knownUuid: deps.uuid,
+            },
+        }),
     component: EditPostPage,
 });
 
 function EditPostPage() {
-    const { post: initial, cdnBaseUrl } = Route.useLoaderData();
+    const { post: initial, categories, cdnBaseUrl } = Route.useLoaderData();
     const router = useRouter();
     const [post, setPost] = useState<WikiPostDetail>(initial);
-    const [statusMsg, setStatusMsg] = useState<{
-        kind: "error" | "success";
-        message: string;
-    } | null>(null);
+    // Snapshot of the markdown body as it currently lives on GitHub. We diff
+    // this against the unsaved body at commit time so any image references the
+    // user removed from the post can be deleted in the same commit.
+    const [committedBody, setCommittedBody] = useState(initial.body);
+    const [statusMsg, setStatusMsg] = useState<StatusMessage | null>(null);
     const [saving, setSaving] = useState(false);
     const [imagesProcessing, setImagesProcessing] = useState(false);
+    const updatePost = (patch: Partial<WikiPostDetail>) =>
+        setPost((current) => ({ ...current, ...patch }));
 
     useEffect(() => {
         const update = () => setImagesProcessing(hasUnprocessed());
@@ -164,16 +83,33 @@ function EditPostPage() {
         setSaving(true);
         setStatusMsg(null);
         try {
-            const { body, images } = await buildPostPayload(post.body);
+            // uuid is minted in the loader (emptyPost) so it stays stable for
+            // the whole session — a retried save hits the same article dir.
+            const { uuid } = post;
+            const { body, images } = await buildPostPayload(post.body, uuid);
+            const deletePaths = diffRemovedImagePaths(
+                committedBody,
+                body,
+                imagePathsFor(uuid),
+            );
             const finalPost = { ...post, body };
             const result = await commitPostFn({
-                data: { post: finalPost, images },
+                data: { post: finalPost, images, deletePaths },
             });
             setPost(finalPost);
+            setCommittedBody(body);
             clearPending();
             setStatusMsg({
                 kind: "success",
-                message: `Saved: ${result.commitSha.slice(0, 7)}`,
+                message: saveMessage(result.commitSha, deletePaths.length),
+            });
+            // Pin the uuid in the URL so a reload before the CDN manifest
+            // catches up reuses it instead of minting a duplicate article.
+            await router.navigate({
+                to: "/posts/$slug/edit",
+                params: { slug: post.slug },
+                search: { uuid },
+                replace: true,
             });
             await router.invalidate();
         } catch (e) {
@@ -187,178 +123,130 @@ function EditPostPage() {
     }
 
     return (
-        <section className="flex flex-col gap-4">
-            <h1>Edit: {post.slug}</h1>
-
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                    id="title"
-                    value={post.title}
-                    onChange={(e) =>
-                        setPost({ ...post, title: e.target.value })
-                    }
-                />
-            </div>
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                    id="description"
-                    value={post.description}
-                    onChange={(e) =>
-                        setPost({ ...post, description: e.target.value })
-                    }
-                />
-            </div>
-            <div className="flex flex-col gap-1.5">
-                <Label htmlFor="category">Category</Label>
-                <Input
-                    id="category"
-                    value={post.category}
-                    onChange={(e) =>
-                        setPost({ ...post, category: e.target.value })
-                    }
-                />
+        <section className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+                <h1 className="mb-0">記事を編集</h1>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">slug: {post.slug}</Badge>
+                    <Badge variant="outline">
+                        uuid: {post.uuid.slice(0, 8)}…
+                    </Badge>
+                </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
-                <Suspense
-                    fallback={
-                        <div className="p-4 text-muted-foreground">
-                            Loading…
-                        </div>
-                    }
-                >
-                    <Editor
-                        markdown={post.body}
-                        onChange={(body) => setPost({ ...post, body })}
-                        onImageUpload={handleImageUpload}
-                        onImagePreview={(src) =>
-                            handleImagePreview(src, cdnBaseUrl)
-                        }
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-sm">メタ情報</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                    <PostField id="title" label="Title">
+                        <Input
+                            id="title"
+                            value={post.title}
+                            onChange={(e) =>
+                                updatePost({ title: e.target.value })
+                            }
+                        />
+                    </PostField>
+                    <PostField id="description" label="Description">
+                        <Textarea
+                            id="description"
+                            value={post.description}
+                            onChange={(e) =>
+                                updatePost({ description: e.target.value })
+                            }
+                        />
+                    </PostField>
+                    <CategoryInput
+                        value={post.category}
+                        categories={categories}
+                        onChange={(category) => updatePost({ category })}
                     />
-                </Suspense>
+                </CardContent>
+            </Card>
+
+            <div className="flex flex-col gap-1.5">
+                <Label>Body</Label>
+                <div className="rounded-lg border bg-card overflow-hidden">
+                    <Suspense
+                        fallback={
+                            <div className="p-4 text-sm text-muted-foreground">
+                                エディタを読み込み中…
+                            </div>
+                        }
+                    >
+                        <Editor
+                            markdown={post.body}
+                            onChange={(body) => updatePost({ body })}
+                            onImageUpload={handleImageUpload}
+                            onImagePreview={(src) =>
+                                handleImagePreview(src, cdnBaseUrl)
+                            }
+                        />
+                    </Suspense>
+                </div>
             </div>
 
             {statusMsg && (
                 <div
                     className={cn(
-                        "rounded-md px-3 py-2 text-sm",
+                        "rounded-md border px-3 py-2 text-sm",
                         statusMsg.kind === "success" &&
-                            "bg-primary/10 text-primary",
+                            "border-foreground/20 bg-accent text-foreground",
                         statusMsg.kind === "error" &&
-                            "bg-destructive/10 text-destructive",
+                            "border-destructive/30 bg-destructive/10 text-destructive",
                     )}
                 >
                     {statusMsg.message}
                 </div>
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="sticky bottom-0 -mx-4 md:-mx-6 border-t bg-background/80 px-4 md:px-6 py-3 backdrop-blur flex items-center justify-end gap-3">
+                {imagesProcessing && (
+                    <span className="text-sm text-muted-foreground">
+                        画像のエンコード待ち…
+                    </span>
+                )}
                 <Button
                     type="button"
                     disabled={saving || imagesProcessing}
                     onClick={onSave}
                 >
                     {saving
-                        ? "Saving…"
+                        ? "保存中…"
                         : imagesProcessing
-                          ? "Processing image…"
-                          : "Save"}
+                          ? "画像処理中…"
+                          : "保存"}
                 </Button>
-                {imagesProcessing && (
-                    <span className="text-sm text-muted-foreground">
-                        画像のエンコード待ち
-                    </span>
-                )}
             </div>
         </section>
     );
 }
 
-async function handleImageUpload(file: File): Promise<string> {
-    // Kick off AVIF encode in the background; resolve immediately with a
-    // placeholder URL so the editor shows the preview blob right away. The
-    // actual upload happens on save by awaiting the `processing` promise.
-    const processing = import("../lib/image-pipeline").then(
-        ({ processImage }) => processImage(file),
-    );
-    processing.catch(() => {});
-    const entry = addPending({ file, processing });
-    return pendingUrlFor(entry.id);
+interface StatusMessage {
+    kind: "error" | "success";
+    message: string;
 }
 
-async function handleImagePreview(
-    src: string,
-    cdnBaseUrl: string,
-): Promise<string> {
-    const id = idFromPendingUrl(src);
-    if (id) {
-        const entry = getPending(id);
-        if (entry) return entry.previewBlobUrl;
-    }
-    return resolveImageUrl(src, cdnBaseUrl);
+function saveMessage(commitSha: string, removedCount: number): string {
+    const short = commitSha.slice(0, 7);
+    if (removedCount === 0) return `Saved: ${short}`;
+    return `Saved: ${short} (removed ${removedCount} image${removedCount === 1 ? "" : "s"})`;
 }
 
-const PENDING_IMG_REGEX =
-    /!\[([^\]]*)\]\((pending:[a-f0-9-]+)(?:\s+"[^"]*")?\)/g;
-
-/**
- * Walk the markdown body, replace each `pending:<id>` URL with the final
- * `/img/<id>.avif "blurhash=..&w=..&h=.."` form, and collect the corresponding
- * AVIF bytes so the server can commit them alongside the post.
- */
-async function buildPostPayload(markdown: string): Promise<{
-    body: string;
-    images: UploadedImage[];
-}> {
-    const matches = [...markdown.matchAll(PENDING_IMG_REGEX)];
-    if (matches.length === 0) {
-        return { body: markdown, images: [] };
-    }
-
-    type Resolved = { replacement: string; image: UploadedImage };
-    const resolved = new Map<string, Resolved>();
-
-    for (const match of matches) {
-        const placeholder = match[2];
-        if (!placeholder || resolved.has(placeholder)) continue;
-        const id = idFromPendingUrl(placeholder);
-        if (!id) continue;
-        const entry = getPending(id);
-        if (!entry) {
-            throw new Error(
-                `Image upload state lost for ${placeholder}. Please re-insert the image.`,
-            );
-        }
-
-        const processed = await entry.processing;
-        const filename = `${entry.id}.avif`;
-        const url = `/img/${filename}`;
-        const title = encodeImageTitle({
-            blurhash: processed.blurhash,
-            width: processed.width,
-            height: processed.height,
-        });
-        resolved.set(placeholder, {
-            replacement: `${url} "${title}"`,
-            image: {
-                path: `content/img/${filename}`,
-                avifBase64: bytesToBase64(processed.avif),
-            },
-        });
-    }
-
-    const body = markdown.replace(
-        PENDING_IMG_REGEX,
-        (full: string, alt: string, placeholder: string) => {
-            const r = resolved.get(placeholder);
-            return r ? `![${alt}](${r.replacement})` : full;
-        },
+function PostField({
+    id,
+    label,
+    children,
+}: {
+    id: string;
+    label: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <Label htmlFor={id}>{label}</Label>
+            {children}
+        </div>
     );
-
-    return {
-        body,
-        images: Array.from(resolved.values()).map((r) => r.image),
-    };
 }

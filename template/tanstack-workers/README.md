@@ -40,7 +40,7 @@ TanStack Start + Cloudflare Workers + [hagaki](../../) を使ったフロント
    HAGAKI_CDN_BASE_URL=https://content-hagaki.<your-subdomain>.workers.dev
    # 任意
    HAGAKI_GITHUB_BRANCH=main
-   HAGAKI_GITHUB_CONTENT_PATH=content/wiki
+   HAGAKI_GITHUB_CONTENT_PATH=content/article
    ```
 
    - **`.env`** はビルド時 (`vite build` / `wrangler deploy`) に拾われる

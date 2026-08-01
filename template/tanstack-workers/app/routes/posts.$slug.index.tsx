@@ -1,8 +1,12 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { markdownToHtml } from "hagaki/markdown";
+import { ArrowLeft, Pencil } from "lucide-react";
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Separator } from "~/components/ui/separator";
 import { getHagakiClient } from "../lib/hagaki";
-import { markdownToHtml } from "../lib/markdown-to-html";
+import { getStringEnv } from "../lib/server-env";
 
 const getRenderedPostFn = createServerFn({ method: "GET" })
     .inputValidator((slug: string) => slug)
@@ -11,9 +15,7 @@ const getRenderedPostFn = createServerFn({ method: "GET" })
         const client = getHagakiClient();
         const post = await client.posts.getBySlug(slug);
         if (!post) return null;
-        const cdnBaseUrl =
-            (env as unknown as Record<string, string | undefined>)
-                .HAGAKI_CDN_BASE_URL ?? "";
+        const cdnBaseUrl = getStringEnv(env, "HAGAKI_CDN_BASE_URL");
         const html = await markdownToHtml(post.body, { cdnBaseUrl });
         return {
             title: post.title,
@@ -49,16 +51,38 @@ export const Route = createFileRoute("/posts/$slug/")({
 function PostViewPage() {
     const post = Route.useLoaderData();
     return (
-        <article className="flex flex-col gap-4">
-            <header className="flex flex-col gap-2">
-                <h1>{post.title || post.slug}</h1>
+        <article className="flex flex-col gap-6">
+            <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="-ml-2 w-fit text-muted-foreground"
+            >
+                <Link to="/posts">
+                    <ArrowLeft />
+                    一覧へ戻る
+                </Link>
+            </Button>
+
+            <header className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                    {post.category && (
+                        <Badge variant="secondary">{post.category}</Badge>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                        {post.date}
+                    </span>
+                </div>
+                <h1 className="mb-0">{post.title || post.slug}</h1>
                 {post.description && (
-                    <p className="text-muted-foreground">{post.description}</p>
+                    <p className="text-muted-foreground mb-0">
+                        {post.description}
+                    </p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                    {post.category} · {post.date}
-                </p>
             </header>
+
+            <Separator />
+
             <div className="prose prose-neutral max-w-none">
                 {/* HTML is generated server-side by remark+rehype with
                     blurhash placeholders pre-baked as data URLs, so no
@@ -68,12 +92,13 @@ function PostViewPage() {
                     dangerouslySetInnerHTML={{ __html: post.html }}
                 />
             </div>
-            <div className="flex gap-2">
-                <Button asChild variant="outline">
-                    <Link to="/posts">一覧へ戻る</Link>
-                </Button>
+
+            <Separator />
+
+            <div className="flex justify-end">
                 <Button asChild>
                     <Link to="/posts/$slug/edit" params={{ slug: post.slug }}>
+                        <Pencil />
                         編集
                     </Link>
                 </Button>
