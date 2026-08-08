@@ -26,7 +26,7 @@ const hagaki = createHagakiClient({
     owner: "morinoparty",
     repo: "wiki-contentdev",
     branch: "main",
-    contentPath: "content/article", // 各記事は content/article/<uuid>/index.mdx
+    contentPath: "content/article", // 各記事は content/article/<uuid>/index.md
     auth: process.env.GITHUB_TOKEN!, // string でも () => Promise<string> でも可
   },
   content: {
@@ -34,7 +34,7 @@ const hagaki = createHagakiClient({
   },
 });
 
-const posts = await hagaki.posts.list({ sortBy: "created", order: "desc" });
+const posts = await hagaki.posts.list({ sortBy: "date", order: "desc" });
 const post = await hagaki.posts.getBySlug("hello-world");
 ```
 
@@ -50,7 +50,7 @@ const committer = committerFromBetterAuth(session, {
 
 const result = await hagaki.posts.save(post, {
   committer,
-  commitMessage: "📝 Update post: hello-world",
+  commitMessage: "Update post: hello-world",
 });
 console.log(result.commitSha, result.commitUrl);
 ```

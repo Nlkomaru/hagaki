@@ -76,7 +76,7 @@ export function createImageComponentDescriptor(
         kind: "flow",
         props: [
             { name: "imageId", type: "string" },
-            { name: "blurHash64", type: "string" },
+            { name: "blurHash", type: "string" },
             { name: "width", type: "string" },
             { name: "height", type: "string" },
             { name: "alt", type: "string" },

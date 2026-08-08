@@ -9,7 +9,7 @@ export interface GitHubRepoConfig {
     branch: string;
     /**
      * Repo directory holding article subdirectories. Each article lives at
-     * `${contentPath}/<uuid>/index.mdx`. Defaults to `content/article`.
+     * `${contentPath}/<uuid>/index.md`. Defaults to `content/article`.
      */
     contentPath: string;
 }
@@ -47,7 +47,7 @@ export async function savePost(
             "savePost: WikiPostDetail.uuid is required — generate one before saving",
         );
     }
-    const filePath = `${repo.contentPath.replace(/\/$/, "")}/${form.uuid}/index.mdx`;
+    const filePath = `${repo.contentPath.replace(/\/$/, "")}/${form.uuid}/index.md`;
 
     const content = matter.stringify(form.body || "", {
         title: form.title,
@@ -55,11 +55,7 @@ export async function savePost(
         uuid: form.uuid,
         category: form.category,
         description: form.description,
-        // Optional fields are omitted, not written as null/empty.
-        ...(form.thumbnail ? { thumbnail: form.thumbnail } : {}),
-        ...(form.modified && form.modified.length > 0
-            ? { modified: form.modified }
-            : {}),
+        image: form.image || "",
     });
     const contentEncoded = toBase64(content);
 
@@ -92,8 +88,7 @@ export async function savePost(
             repo: repo.repo,
             path: filePath,
             message:
-                // gitmoji: 📝 = add/update content.
-                options?.commitMessage ?? `📝 Update post: ${form.slug}`,
+                options?.commitMessage ?? `Add or update post: ${form.slug}.md`,
             content: contentEncoded,
             branch: repo.branch,
             sha: fileSha,

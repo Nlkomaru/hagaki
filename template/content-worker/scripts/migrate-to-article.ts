@@ -1,6 +1,6 @@
 /**
  * One-shot migration: `content/wiki/<slug>.md` + `content/img/<file>`
- *   → `content/article/<uuid>/index.mdx` + `content/article/<uuid>/assets/<file>`
+ *   → `content/article/<uuid>/index.md` + `content/article/<uuid>/assets/<file>`
  *
  * Contract:
  * - **All-or-nothing.** Every staged change is computed and verified first.
@@ -53,7 +53,7 @@ async function migratedSlugs(): Promise<Set<string>> {
     const entries = await fs.readdir(ARTICLE_DIR, { withFileTypes: true });
     for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const indexPath = path.join(ARTICLE_DIR, entry.name, "index.mdx");
+        const indexPath = path.join(ARTICLE_DIR, entry.name, "index.md");
         try {
             const raw = await fs.readFile(indexPath, "utf-8");
             const slug = matter(raw).data.slug as string | undefined;
@@ -149,9 +149,9 @@ async function migrate() {
             await fs.mkdir(path.join(dir, "assets"), { recursive: true });
         }
         for (const [from, to] of post.copies) await fs.copyFile(from, to);
-        await fs.writeFile(path.join(dir, "index.mdx"), post.indexMd);
+        await fs.writeFile(path.join(dir, "index.md"), post.indexMd);
         console.info(
-            `migrated ${post.sourceFile} → article/${post.uuid}/index.mdx`,
+            `migrated ${post.sourceFile} → article/${post.uuid}/index.md`,
         );
     }
 

@@ -137,7 +137,7 @@ export const commitPostFn = createServerFn({ method: "POST" })
 
         const { default: matter } = await import("gray-matter");
         const client = await getHagakiClient();
-        const postPath = `${articleDir}/index.mdx`;
+        const postPath = `${articleDir}/index.md`;
         const markdown = matter.stringify(
             data.post.body || "",
             postFrontmatter(data.post),
@@ -171,12 +171,11 @@ export const commitPostFn = createServerFn({ method: "POST" })
         return result;
     });
 
-// gitmoji: 📝 = add/update content.
 function commitMessage(slug: string, added: number, removed: number): string {
     const segments: string[] = [];
     if (added > 0) segments.push(`+${added} image${added === 1 ? "" : "s"}`);
     if (removed > 0)
         segments.push(`-${removed} image${removed === 1 ? "" : "s"}`);
-    if (segments.length === 0) return `📝 Update post: ${slug}`;
-    return `📝 Update post: ${slug} (${segments.join(", ")})`;
+    if (segments.length === 0) return `Update post: ${slug}`;
+    return `Update post: ${slug} (${segments.join(", ")})`;
 }
