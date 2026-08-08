@@ -1,6 +1,6 @@
 "use client";
 import { HagakiEditor } from "hagaki/editor";
-import type { ImageDirectiveAttrs } from "hagaki/markdown";
+import type { ImageComponentAttrs } from "hagaki/markdown";
 import { ImagePlus } from "lucide-react";
 import { editorI18n } from "./editor-i18n";
 
@@ -8,8 +8,8 @@ export interface EditorProps {
     markdown: string;
     onChange: (markdown: string) => void;
     /** 新フロー: ファイル → analyze+startPending を行い directive 属性を返す */
-    onInsertImage?: (file: File) => Promise<ImageDirectiveAttrs>;
-    /** 新フロー: `::img` directive の id → 表示 URL（pending か CDN） */
+    onInsertImage?: (file: File) => Promise<ImageComponentAttrs>;
+    /** 新フロー: `<Image />` の imageId → 表示 URL（pending か CDN） */
     imagePreviewUrlFor?: (id: string) => string;
     /** 旧形式 `![alt](url)` 画像の表示 URL 解決（後方互換） */
     onImagePreview?: (src: string) => Promise<string>;
@@ -40,12 +40,12 @@ export function Editor(props: EditorProps) {
                     {/*<HagakiEditor.ListsToggle />*/}
                     {/*<HagakiEditor.Separator />*/}
                     {/*<HagakiEditor.CreateLink />*/}
-                    <HagakiEditor.InsertImage.DirectiveButton
+                    <HagakiEditor.InsertImage.ComponentButton
                         className="inline-flex items-center justify-center gap-1.5 size-8 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors data-[disabled=true]:opacity-50 data-[disabled=true]:pointer-events-none"
                         title="画像をアップロード"
                     >
                         <ImagePlus className="size-4" />
-                    </HagakiEditor.InsertImage.DirectiveButton>
+                    </HagakiEditor.InsertImage.ComponentButton>
                     {/*<HagakiEditor.InsertTable />*/}
                     <HagakiEditor.InsertThematicBreak />
                     {/*<HagakiEditor.InsertCodeBlock />*/}

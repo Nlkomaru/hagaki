@@ -11,9 +11,9 @@ import { getStringEnv } from "./server-env";
 interface CommitPostInput {
     post: WikiPostDetail;
     /**
-     * `::img` directive ids referenced by the body that are not committed
-     * yet. Their AVIF bytes live in the pending R2 bucket (uploaded while
-     * editing) and are moved into the repo by this commit.
+     * `<Image />` component ids referenced by the body that are not
+     * committed yet. Their AVIF bytes live in the pending R2 bucket
+     * (uploaded while editing) and are moved into the repo by this commit.
      */
     pendingImageIds: string[];
     /** Repo paths of images that should be removed in this commit. */

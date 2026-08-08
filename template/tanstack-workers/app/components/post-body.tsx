@@ -1,4 +1,8 @@
-import { parseImageDirectiveAttributes } from "hagaki/markdown";
+import {
+    isImageComponentNode,
+    type MdxJsxAttributeLike,
+    parseImageComponentAttributes,
+} from "hagaki/markdown";
 import { HagakiImageConfig, Image } from "hagaki/react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -7,30 +11,33 @@ import type { Options as RehypeReactOptions } from "rehype-react";
 import rehypeReact from "rehype-react";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
+import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import { committedImageUrl } from "../lib/post-editor-images";
 
 /**
- * 記事本文の markdown → React レンダリング。
+ * 記事本文の markdown (MDX) → React レンダリング。
  *
- * remark-directive で `::img{id=… blurhash=… w=… h=… alt=…}` を拾い、
- * hagaki/react の `<Image>`(blurhash プレースホルダ + フェードイン内蔵)に
- * マップする。HTML 文字列 + dangerouslySetInnerHTML の経路は廃止済み。
+ * remark-mdx で `<Image imageId=… blurHash=… width=… height=… alt=… />` を
+ * 拾い、hagaki/react の `<Image>`(blurhash プレースホルダ + フェードイン
+ * 内蔵)にマップする。HTML 文字列 + dangerouslySetInnerHTML の経路は廃止
+ * 済み。Workers では eval が使えないため @mdx-js/mdx の evaluate ではなく
+ * AST 変換(ホワイトリスト方式)で描画する。
  *
  * - `:::note` 等の admonition container は簡易 callout にマップ
- * - 未知の directive はソース位置スライスでリテラル復元する
- *   (remark-directive は `参照:foo` のような本文中のコロン表記を
+ * - 未知の directive・未知の JSX/式ノードはソース位置スライスでリテラル
+ *   復元する(remark-directive は `参照:foo` のような本文中のコロン表記を
  *   textDirective として食ってしまうため)
  */
 
 interface MdNode {
     type: string;
-    name?: string;
+    name?: string | null;
     children?: MdNode[];
     value?: string;
-    attributes?: Record<string, string | null | undefined>;
+    attributes?: Record<string, string | null | undefined> | unknown[];
     position?: { start?: { offset?: number }; end?: { offset?: number } };
     data?: { hName?: string; hProperties?: Record<string, unknown> };
 }
@@ -39,6 +46,15 @@ const DIRECTIVE_TYPES = new Set([
     "textDirective",
     "leafDirective",
     "containerDirective",
+]);
+
+// remark-mdx が生む JSX / 式 / ESM ノード。<Image /> 以外はリテラル復元。
+const MDX_TYPES = new Set([
+    "mdxJsxFlowElement",
+    "mdxJsxTextElement",
+    "mdxFlowExpression",
+    "mdxTextExpression",
+    "mdxjsEsm",
 ]);
 
 const ADMONITION_KINDS = new Set(["note", "tip", "danger", "info", "caution"]);
@@ -51,8 +67,8 @@ function remarkHagakiDirectives() {
 }
 
 function visit(node: MdNode, source: string): MdNode {
-    if (DIRECTIVE_TYPES.has(node.type)) {
-        const mapped = mapDirective(node, source);
+    if (DIRECTIVE_TYPES.has(node.type) || MDX_TYPES.has(node.type)) {
+        const mapped = mapSpecialNode(node, source);
         // リテラル復元されたテキストノード — 子は残っていない
         if (mapped !== node) return mapped;
     }
@@ -62,11 +78,13 @@ function visit(node: MdNode, source: string): MdNode {
     return node;
 }
 
-function mapDirective(node: MdNode, source: string): MdNode {
-    if (node.type === "leafDirective" && node.name === "img") {
-        // id の uuid 検証と w/h の正規化は hagaki の AST 用パーサに任せる
-        // (`#<uuid>` ショートカット形も attributes.id に入ってくる)。
-        const attrs = parseImageDirectiveAttributes(node.attributes);
+function mapSpecialNode(node: MdNode, source: string): MdNode {
+    if (isImageComponentNode(node)) {
+        // imageId の uuid 検証と width/height の正規化は hagaki の
+        // AST 用パーサに任せる。
+        const attrs = parseImageComponentAttributes(
+            node.attributes as MdxJsxAttributeLike[] | undefined,
+        );
         if (!attrs) return { type: "text", value: "" };
         node.data = {
             hName: "hagaki-img",
@@ -92,13 +110,14 @@ function mapDirective(node: MdNode, source: string): MdNode {
         };
         return node;
     }
-    // 未知 directive: 元ソースをそのまま本文テキストとして復元する。
+    // 未知 directive / 未知 JSX / 式ノード: 元ソースをそのまま本文
+    // テキストとして復元する。
     const start = node.position?.start?.offset;
     const end = node.position?.end?.offset;
     const literal =
         start != null && end != null
             ? source.slice(start, end)
-            : `:${node.name ?? ""}`;
+            : (node.value ?? "");
     return { type: "text", value: literal };
 }
 
@@ -155,10 +174,30 @@ const components = {
 const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
+    .use(remarkMdx)
     .use(remarkDirective)
     .use(remarkHagakiDirectives)
     .use(remarkRehype)
     .use(rehypeReact, { Fragment, jsx, jsxs, components });
+
+// MDX は生の `<` や `{` を構文エラーにする。エディタ経由の本文は常に
+// エスケープ済みだが、手書き・移行前の本文でページ全体が落ちないよう、
+// パース失敗時は MDX 拡張なしの markdown として描画する。
+const plainProcessor = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkDirective)
+    .use(remarkHagakiDirectives)
+    .use(remarkRehype)
+    .use(rehypeReact, { Fragment, jsx, jsxs, components });
+
+function renderMarkdown(markdown: string): ReactNode {
+    try {
+        return processor.processSync(markdown).result;
+    } catch {
+        return plainProcessor.processSync(markdown).result;
+    }
+}
 
 export interface PostBodyProps {
     markdown: string;
@@ -170,7 +209,7 @@ export interface PostBodyProps {
 
 export function PostBody(props: PostBodyProps) {
     const { markdown, articleId, cdnBaseUrl, className } = props;
-    // ::img の id (uuid) → コミット済み CDN URL(`<id>.avif`)。
+    // <Image /> の imageId (uuid) → コミット済み CDN URL(`<id>.avif`)。
     const urlFor = useMemo(
         () =>
             ({
@@ -183,10 +222,7 @@ export function PostBody(props: PostBodyProps) {
                 committedImageUrl(imageId, id, cdnBaseUrl),
         [cdnBaseUrl],
     );
-    const content = useMemo(
-        () => processor.processSync(markdown).result,
-        [markdown],
-    );
+    const content = useMemo(() => renderMarkdown(markdown), [markdown]);
     return (
         <div className={className}>
             <HagakiImageConfig articleId={articleId} urlFor={urlFor}>

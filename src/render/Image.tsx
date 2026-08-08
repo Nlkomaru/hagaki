@@ -59,9 +59,13 @@ export interface HagakiImageProps {
     /** File name inside the article's assets directory. */
     imageId: string;
     blurHash?: string;
-    /** Intrinsic size — reserves the box via `aspect-ratio` before load. */
-    width?: number;
-    height?: number;
+    /**
+     * Intrinsic size — reserves the box via `aspect-ratio` before load.
+     * Strings are accepted (and coerced) so the MDX form
+     * `<Image width="1920" … />` can map straight onto this component.
+     */
+    width?: number | string;
+    height?: number | string;
     alt?: string;
     /** Explicit src override (e.g. a blob preview URL). Skips `urlFor`. */
     src?: string;
@@ -86,12 +90,25 @@ export interface HagakiImageProps {
  * shift when the bytes arrive. SSR-safe: the placeholder and layout render
  * on the server, only the fade is client behaviour.
  */
+const MAX_IMAGE_DIMENSION = 20000;
+
+function toDimension(value: number | string | undefined): number | undefined {
+    if (value == null) return undefined;
+    const n = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(n)) return undefined;
+    const i = Math.floor(n);
+    if (i < 1 || i > MAX_IMAGE_DIMENSION) return undefined;
+    return i;
+}
+
 export function Image(props: HagakiImageProps) {
     const ctx = useContext(HagakiImageContext);
     const articleId = props.articleId ?? ctx.articleId ?? "";
     const urlFor = props.urlFor ?? ctx.urlFor ?? defaultImageUrl;
     const src = props.src ?? urlFor({ articleId, imageId: props.imageId });
-    const { blurHash, width, height } = props;
+    const { blurHash } = props;
+    const width = toDimension(props.width);
+    const height = toDimension(props.height);
 
     const placeholder = useMemo(
         () => (blurHash ? blurhashToDataUrl(blurHash, width, height) : ""),

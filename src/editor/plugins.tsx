@@ -6,6 +6,7 @@ import {
     directivesPlugin,
     headingsPlugin,
     imagePlugin,
+    jsxPlugin,
     linkPlugin,
     listsPlugin,
     markdownShortcutPlugin,
@@ -17,15 +18,15 @@ import {
     UndoRedo,
 } from "@mdxeditor/editor";
 import type { ReactNode } from "react";
-import { createImageDirectiveDescriptor } from "./image-directive.js";
+import { createImageComponentDescriptor } from "./image-jsx.js";
 
 export interface DefaultPluginsOptions {
     imageUploadHandler?: (file: File) => Promise<string>;
     imagePreviewHandler?: (src: string) => Promise<string>;
     imageAutocompleteSuggestions?: string[];
     /**
-     * Display URL for a committed image id. When set, `::img` directives
-     * render inline via {@link createImageDirectiveDescriptor}.
+     * Display URL for a committed image id. `<Image />` MDX components
+     * render inline via {@link createImageComponentDescriptor}.
      */
     imagePreviewUrlFor?: (id: string) => string;
     toolbarContents?: () => ReactNode;
@@ -61,16 +62,16 @@ export function defaultPlugins(
         tablePlugin(),
         listsPlugin(),
         directivesPlugin({
-            // The image descriptor must come before the admonition one so it
-            // claims `::img` leaf directives first.
-            directiveDescriptors: options.imagePreviewUrlFor
-                ? [
-                      createImageDirectiveDescriptor({
-                          previewUrlFor: options.imagePreviewUrlFor,
-                      }),
-                      AdmonitionDirectiveDescriptor,
-                  ]
-                : [AdmonitionDirectiveDescriptor],
+            directiveDescriptors: [AdmonitionDirectiveDescriptor],
+        }),
+        // MDX `<Image />` support. Registered even without a resolver so
+        // bodies that contain the component still parse instead of erroring.
+        jsxPlugin({
+            jsxComponentDescriptors: [
+                createImageComponentDescriptor({
+                    previewUrlFor: options.imagePreviewUrlFor ?? (() => ""),
+                }),
+            ],
         }),
         codeBlockPlugin(),
         quotePlugin(),

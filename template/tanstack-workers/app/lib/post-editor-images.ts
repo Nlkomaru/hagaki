@@ -1,7 +1,7 @@
 import { resolveCdnUrl } from "hagaki";
 import {
-    extractImageDirectiveIds,
-    type ImageDirectiveAttrs,
+    extractImageComponentIds,
+    type ImageComponentAttrs,
 } from "hagaki/markdown";
 import {
     getPending,
@@ -52,7 +52,7 @@ export function committedImageUrl(
 export async function handleInsertImage(
     file: File,
     postUuid: string,
-): Promise<ImageDirectiveAttrs> {
+): Promise<ImageComponentAttrs> {
     const entry = await startPending({
         file,
         upload: async ({ id, avif }) => {
@@ -80,12 +80,12 @@ export async function handleInsertImage(
 }
 
 /**
- * 本文から消えた失敗エントリを store から掃除する。`::img` ノードを
+ * 本文から消えた失敗エントリを store から掃除する。`<Image />` ノードを
  * Backspace や undo で消しても removePending は呼ばれないため、放置すると
  * hasErrors() が真のまま保存ボタンが永久に無効化される。エディタの
  * onChange から毎回呼ぶ想定なので、markdown をパースせず uuid の部分文字列
  * 一致で判定する（uuid が偶然本文に現れる誤一致は事実上起きない）。error
- * エントリに限定して消すので、undo で directive が本文へ戻っても進行中・
+ * エントリに限定して消すので、undo で <Image /> が本文へ戻っても進行中・
  * アップロード済みのエントリを誤って破棄しない。
  */
 export function sweepOrphanedImageErrors(body: string): void {
@@ -127,8 +127,8 @@ export async function buildPostPayload(
         );
     }
 
-    const committedIds = new Set(extractImageDirectiveIds(committedBody));
-    const pendingImageIds = extractImageDirectiveIds(markdown).filter(
+    const committedIds = new Set(extractImageComponentIds(committedBody));
+    const pendingImageIds = extractImageComponentIds(markdown).filter(
         (id) => !committedIds.has(id),
     );
 

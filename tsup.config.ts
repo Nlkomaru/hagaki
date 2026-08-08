@@ -44,6 +44,6 @@ export default defineConfig({
         "uuid",
         "unified",
         "remark-parse",
-        "remark-directive",
+        "remark-mdx",
     ],
 });

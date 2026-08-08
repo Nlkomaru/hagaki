@@ -83,9 +83,9 @@ function PostViewPage() {
 
             <Separator />
 
-            {/* remark-directive + rehype-react による React 要素レンダリング。
-                ::img は hagaki/react の <Image>(blurhash プレースホルダ内蔵)
-                に直接マップされる。 */}
+            {/* remark-mdx + rehype-react による React 要素レンダリング。
+                本文中の <Image /> は hagaki/react の <Image>(blurhash
+                プレースホルダ内蔵)に直接マップされる。 */}
             <PostBody
                 markdown={post.body}
                 articleId={post.uuid}
