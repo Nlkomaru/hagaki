@@ -14,7 +14,7 @@ import { getHagakiClient } from "../lib/hagaki";
 
 const listPostsFn = createServerFn({ method: "GET" }).handler(async () => {
     const client = await getHagakiClient();
-    return client.posts.list({ sortBy: "date", order: "desc" });
+    return client.posts.list({ sortBy: "created", order: "desc" });
 });
 
 export const Route = createFileRoute("/posts/")({
@@ -64,7 +64,7 @@ function PostsIndexPage() {
                                             </Badge>
                                         )}
                                         <span className="text-xs text-muted-foreground">
-                                            {post.date}
+                                            {post.created?.slice(0, 10)}
                                         </span>
                                     </div>
                                     <CardTitle className="text-base">
