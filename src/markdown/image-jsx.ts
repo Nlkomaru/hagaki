@@ -1,7 +1,7 @@
 /**
  * MDX `<Image />` representation of an uploaded image:
  *
- *   <Image imageId="<uuid>" blurHash="<hash>" width="1920" height="1080" alt="…" />
+ *   <Image imageId="<uuid>" blurHash64="<base64>" width="1920" height="1080" alt="…" />
  *
  * The markdown (MDX) body only carries the image `imageId` (which doubles as
  * the `<id>.avif` file name in the repo) plus enough metadata to render a
@@ -17,12 +17,17 @@
 import remarkMdx from "remark-mdx";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { blurhashFromBase64, blurhashToBase64 } from "./blurhash64.js";
 
 export const IMAGE_COMPONENT_NAME = "Image";
 
 export interface ImageComponentAttrs {
     /** uuid — doubles as the `<id>.avif` file name in the repo. */
     id: string;
+    /**
+     * Raw blurhash. Serialized as the base64 `blurHash64` attribute (raw
+     * base83 contains `{`/`}` which JSX attributes can't carry safely).
+     */
     blurhash?: string;
     width?: number;
     height?: number;
@@ -78,7 +83,9 @@ function isValidDimension(value: number | undefined): value is number {
 export function imageComponentMarkdown(attrs: ImageComponentAttrs): string {
     const parts = [`imageId="${cleanAttrValue(attrs.id)}"`];
     if (attrs.blurhash) {
-        parts.push(`blurHash="${cleanAttrValue(attrs.blurhash)}"`);
+        parts.push(
+            `blurHash64="${cleanAttrValue(blurhashToBase64(attrs.blurhash))}"`,
+        );
     }
     if (isValidDimension(attrs.width)) {
         parts.push(`width="${Math.floor(attrs.width)}"`);
@@ -156,7 +163,7 @@ export function parseImageComponentAttributes(
     if (!id || !UUID_REGEX.test(id)) return undefined;
     return {
         id,
-        blurhash: attrValue(attributes, "blurHash") || undefined,
+        blurhash: blurhashFromBase64(attrValue(attributes, "blurHash64")),
         width: parseDimension(attrValue(attributes, "width")),
         height: parseDimension(attrValue(attributes, "height")),
         alt: attrValue(attributes, "alt"),
