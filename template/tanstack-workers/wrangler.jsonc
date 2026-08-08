@@ -19,7 +19,13 @@
     "vars": {
         "HAGAKI_CDN_BASE_URL": "https://content-hagaki.nikomaru.workers.dev",
         "HAGAKI_GITHUB_OWNER": "nlkomaru",
-        "HAGAKI_GITHUB_REPO": "hagaki-content"
+        "HAGAKI_GITHUB_REPO": "hagaki-content",
+        // MineAuth (OIDC) — public client + PKCE。client secret は不要。
+        // このアプリの origin の redirect URI
+        // (`<origin>/api/auth/oauth2/callback/MineAuth`) を登録した
+        // client の ID に差し替えること。
+        "CLIENT_ID": "set-your-mineauth-client-id",
+        "MAIN_SERVER_URL": "https://api.morino.party/main"
         // 非機密値はここに置けるが、HAGAKI_GITHUB_TOKEN は secret として
         // `wrangler secret put HAGAKI_GITHUB_TOKEN` で設定すること。
         // 機密でない値の例:
@@ -40,12 +46,18 @@
             "bucket_name": "hagaki-pending-images"
         }
     ],
-    // HAGAKI_GITHUB_TOKEN は Cloudflare Secrets Store (BSM: hagaki/HAGAKI_GITHUB_TOKEN) から供給する
+    // HAGAKI_GITHUB_TOKEN は Cloudflare Secrets Store (BSM: hagaki/HAGAKI_GITHUB_TOKEN)、
+    // AUTH_SECRET は同 (BSM: shared/AUTH_SECRET) から供給する
     "secrets_store_secrets": [
         {
             "binding": "HAGAKI_GITHUB_TOKEN",
             "store_id": "d36d5a11ea07462c83bb21a0e9ccb811",
             "secret_name": "hagaki_HAGAKI_GITHUB_TOKEN"
+        },
+        {
+            "binding": "AUTH_SECRET",
+            "store_id": "d36d5a11ea07462c83bb21a0e9ccb811",
+            "secret_name": "shared_AUTH_SECRET"
         }
     ]
 }

@@ -7,8 +7,8 @@ import {
     currentListType$,
     editorInTable$,
     iconComponentFor$,
-    insertDirective$,
     insertImage$,
+    insertJsx$,
     openNewImageDialog$,
     readOnly$,
     Button as ToolbarButton,
@@ -23,10 +23,10 @@ import {
 } from "lexical";
 import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import {
-    IMAGE_DIRECTIVE_NAME,
-    type ImageDirectiveAttrs,
-} from "../markdown/directive.js";
-import { ImageDirectiveContext } from "./image-directive.js";
+    IMAGE_COMPONENT_NAME,
+    type ImageComponentAttrs,
+} from "../markdown/image-jsx.js";
+import { ImageComponentContext } from "./image-jsx.js";
 
 // Bitflags used by MDXEditor's `currentFormat$`. Mirrors `FormatConstants.ts`
 // inside @mdxeditor/editor (not exported, so we duplicate).
@@ -277,34 +277,34 @@ export function InsertImageFileButton(props: InsertImageFileButtonProps) {
     );
 }
 
-export interface InsertImageDirectiveButtonProps
+export interface InsertImageComponentButtonProps
     extends HagakiEditorToolbarButtonProps {
     /** `<input type="file">` accept attribute. Defaults to `image/*`. */
     accept?: string;
 }
 
 /**
- * File picker for the directive-based image flow: hands the file to the
- * editor's `onInsertImage` (via {@link ImageDirectiveContext}) and inserts an
- * `::img{id="…" blurhash="…" w="…" h="…" alt=""}` leaf directive with the
- * attributes it resolves to. The blurhash placeholder shows immediately while
- * the AVIF encode + upload continue in the background.
+ * File picker for the MDX image flow: hands the file to the editor's
+ * `onInsertImage` (via {@link ImageComponentContext}) and inserts an
+ * `<Image imageId="…" blurHash="…" width="…" height="…" alt="" />` component
+ * with the attributes it resolves to. The blurhash placeholder shows
+ * immediately while the AVIF encode + upload continue in the background.
  *
  * Disabled unless the editor was given an `onInsertImage` prop. If
  * `onInsertImage` rejects, nothing is inserted and the error is reported via
  * `onError` (or `console.error`).
  */
-export function InsertImageDirectiveButton(
-    props: InsertImageDirectiveButtonProps,
+export function InsertImageComponentButton(
+    props: InsertImageComponentButtonProps,
 ) {
-    const insertDirective = usePublisher(insertDirective$);
+    const insertJsx = usePublisher(insertJsx$);
     const [iconFor, readOnly] = useCellValues(iconComponentFor$, readOnly$);
-    const { onInsertImage, onError } = useContext(ImageDirectiveContext);
+    const { onInsertImage, onError } = useContext(ImageComponentContext);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleFile = async (file: File) => {
         if (!onInsertImage) return;
-        let attrs: ImageDirectiveAttrs;
+        let attrs: ImageComponentAttrs;
         try {
             attrs = await onInsertImage(file);
         } catch (e) {
@@ -313,15 +313,18 @@ export function InsertImageDirectiveButton(
             else console.error(e);
             return;
         }
-        insertDirective({
-            type: "leafDirective",
-            name: IMAGE_DIRECTIVE_NAME,
-            // Markdown attribute names are the short forms `w`/`h`.
-            attributes: {
-                id: attrs.id,
-                ...(attrs.blurhash ? { blurhash: attrs.blurhash } : {}),
-                ...(attrs.width != null ? { w: String(attrs.width) } : {}),
-                ...(attrs.height != null ? { h: String(attrs.height) } : {}),
+        insertJsx({
+            kind: "flow",
+            name: IMAGE_COMPONENT_NAME,
+            // String attributes only — hagaki/react's <Image> coerces
+            // width/height back to numbers.
+            props: {
+                imageId: attrs.id,
+                ...(attrs.blurhash ? { blurHash: attrs.blurhash } : {}),
+                ...(attrs.width != null ? { width: String(attrs.width) } : {}),
+                ...(attrs.height != null
+                    ? { height: String(attrs.height) }
+                    : {}),
                 alt: attrs.alt ?? "",
             },
         });

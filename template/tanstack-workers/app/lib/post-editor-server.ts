@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { WikiPostDetail } from "hagaki";
 import { validateAvifUpload } from "hagaki/image";
+import { requireSession } from "./auth-server";
+import { resolveCommitter } from "./committer";
 import { getHagakiClient } from "./hagaki";
 import { stripLegacyPendingImages } from "./post-editor-markdown";
 import { emptyPost, postFrontmatter } from "./post-frontmatter";
@@ -9,9 +11,9 @@ import { getStringEnv } from "./server-env";
 interface CommitPostInput {
     post: WikiPostDetail;
     /**
-     * `::img` directive ids referenced by the body that are not committed
-     * yet. Their AVIF bytes live in the pending R2 bucket (uploaded while
-     * editing) and are moved into the repo by this commit.
+     * `<Image />` component ids referenced by the body that are not
+     * committed yet. Their AVIF bytes live in the pending R2 bucket
+     * (uploaded while editing) and are moved into the repo by this commit.
      */
     pendingImageIds: string[];
     /** Repo paths of images that should be removed in this commit. */
@@ -36,6 +38,9 @@ interface GetEditorPostInput {
 export const getEditorPostFn = createServerFn({ method: "GET" })
     .inputValidator((input: GetEditorPostInput) => input)
     .handler(async ({ data }) => {
+        // エンドポイント単位の保護: server fn は直接叩ける RPC なので、
+        // レイアウト側の beforeLoad ではなくここで検証する(未認証 401)。
+        await requireSession();
         const { env } = await import("cloudflare:workers");
         const client = await getHagakiClient();
         const existing = await client.posts.getBySlug(data.slug);
@@ -70,6 +75,10 @@ export const getEditorPostFn = createServerFn({ method: "GET" })
 export const commitPostFn = createServerFn({ method: "POST" })
     .inputValidator((input: CommitPostInput) => input)
     .handler(async ({ data }) => {
+        await requireSession();
+        // Committer は userinfo 由来の Minecraft UUID + MCID(session.user.id
+        // は DB-less では不安定なため使わない — lib/committer.ts)。
+        const committer = await resolveCommitter();
         if (!data.post.uuid) {
             throw new Error(
                 "commitPostFn: post.uuid is required (mint one on first save)",
@@ -137,6 +146,7 @@ export const commitPostFn = createServerFn({ method: "POST" })
         const result = await client.commits.commitFiles({
             files: [...imageFiles, { path: postPath, content: markdown }],
             deletePaths,
+            committer,
             commitMessage: commitMessage(
                 data.post.slug,
                 imageFiles.length,

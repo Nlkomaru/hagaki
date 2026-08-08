@@ -6,6 +6,7 @@ import {
     directivesPlugin,
     headingsPlugin,
     imagePlugin,
+    jsxPlugin,
     linkPlugin,
     listsPlugin,
     MDXEditor,
@@ -25,12 +26,12 @@ import {
     type ReactNode,
     useMemo,
 } from "react";
-import type { ImageDirectiveAttrs } from "../markdown/directive.js";
+import type { ImageComponentAttrs } from "../markdown/image-jsx.js";
 import { Content } from "./Content.js";
 import {
-    createImageDirectiveDescriptor,
-    ImageDirectiveContext,
-} from "./image-directive.js";
+    createImageComponentDescriptor,
+    ImageComponentContext,
+} from "./image-jsx.js";
 import { defaultPlugins } from "./plugins.js";
 import { Toolbar } from "./Toolbar.js";
 
@@ -55,16 +56,16 @@ export interface HagakiEditorRootProps {
     /** Async image preview handler (resolves a URL to a display-able URL). */
     onImagePreview?: (src: string) => Promise<string>;
     /**
-     * New image flow: analyze the file + start the pending upload
+     * MDX image flow: analyze the file + start the pending upload
      * (`startPending` from `hagaki/pending-images`), resolving with the
-     * attributes for the `::img` directive to insert. Consumed by
-     * `<HagakiEditor.InsertImage.DirectiveButton>`.
+     * attributes for the `<Image />` component to insert. Consumed by
+     * `<HagakiEditor.InsertImage.ComponentButton>`.
      */
-    onInsertImage?: (file: File) => Promise<ImageDirectiveAttrs>;
+    onInsertImage?: (file: File) => Promise<ImageComponentAttrs>;
     /**
-     * New image flow: display URL for a committed image id. When set, `::img`
-     * directives render inline (blurhash placeholder + upload progress); ids
-     * without a pending entry resolve through this callback.
+     * MDX image flow: display URL for a committed image id. When set,
+     * `<Image />` components render inline (blurhash placeholder + upload
+     * progress); ids without a pending entry resolve through this callback.
      */
     imagePreviewUrlFor?: (id: string) => string;
     /** Optional autocompletion suggestions for the image dialog. */
@@ -120,16 +121,16 @@ function buildPlugins(
         tablePlugin(),
         listsPlugin(),
         directivesPlugin({
-            // The image descriptor must come before the admonition one so it
-            // claims `::img` leaf directives first.
-            directiveDescriptors: props.imagePreviewUrlFor
-                ? [
-                      createImageDirectiveDescriptor({
-                          previewUrlFor: props.imagePreviewUrlFor,
-                      }),
-                      AdmonitionDirectiveDescriptor,
-                  ]
-                : [AdmonitionDirectiveDescriptor],
+            directiveDescriptors: [AdmonitionDirectiveDescriptor],
+        }),
+        // MDX `<Image />` support. Registered even without a resolver so
+        // bodies that contain the component still parse instead of erroring.
+        jsxPlugin({
+            jsxComponentDescriptors: [
+                createImageComponentDescriptor({
+                    previewUrlFor: props.imagePreviewUrlFor ?? (() => ""),
+                }),
+            ],
         }),
         codeBlockPlugin(),
         quotePlugin(),
@@ -217,15 +218,15 @@ export function HagakiEditorRoot(props: HagakiEditorRootProps) {
     const slots = plugins ? {} : resolveSlots(children);
     const finalPlugins = plugins ?? buildPlugins(props, slots);
     const finalTranslation = resolveTranslation(translation, i18n);
-    // Carries the directive-flow insert handler down to the toolbar button
+    // Carries the MDX image-flow insert handler down to the toolbar button
     // regardless of whether plugins were overridden.
-    const imageDirectiveContext = useMemo(
+    const imageComponentContext = useMemo(
         () => ({ onInsertImage, onError }),
         [onInsertImage, onError],
     );
 
     return (
-        <ImageDirectiveContext.Provider value={imageDirectiveContext}>
+        <ImageComponentContext.Provider value={imageComponentContext}>
             <MDXEditor
                 ref={editorRef}
                 markdown={markdown}
@@ -241,7 +242,7 @@ export function HagakiEditorRoot(props: HagakiEditorRootProps) {
                 }
                 translation={finalTranslation}
             />
-        </ImageDirectiveContext.Provider>
+        </ImageComponentContext.Provider>
     );
 }
 

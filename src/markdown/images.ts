@@ -1,4 +1,4 @@
-import { extractImageDirectiveIds } from "./directive.js";
+import { extractImageComponentIds } from "./image-jsx.js";
 
 const IMG_REGEX = /!\[[^\]]*\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g;
 
@@ -27,7 +27,7 @@ function normalizePrefix(value: string): string {
  *   - legacy `![alt](url)` references whose URL lives under
  *     `config.urlPrefix` (external `http(s)://`, `data:` and session-local
  *     `pending:<id>` placeholders are skipped), and
- *   - `::img{id="<uuid>"}` directives, whose blobs live at
+ *   - `<Image imageId="<uuid>" />` MDX components, whose blobs live at
  *     `<repoDir><id>.avif` by convention.
  *
  * Useful for diff'ing the "before" and "after" of a post to figure out which
@@ -47,7 +47,7 @@ export function extractRepoImagePaths(
         if (!filename) continue;
         paths.add(`${repoDir}${filename}`);
     }
-    for (const id of extractImageDirectiveIds(markdown)) {
+    for (const id of extractImageComponentIds(markdown)) {
         paths.add(`${repoDir}${id}.avif`);
     }
     return [...paths];

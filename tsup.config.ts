@@ -4,6 +4,7 @@ export default defineConfig({
     entry: {
         index: "src/index.ts",
         react: "src/react.ts",
+        editor: "src/editor.ts",
         image: "src/image.ts",
         markdown: "src/markdown.ts",
         "pending-images": "src/pending-images.ts",
@@ -15,7 +16,11 @@ export default defineConfig({
     clean: true,
     target: "es2022",
     platform: "neutral",
-    splitting: false,
+    // Code splitting keeps modules shared between entries (e.g. the
+    // HagakiImageConfig context used by both `react` and `editor`) as a
+    // single chunk — duplicating the context would break provider lookups
+    // across the two bundles.
+    splitting: true,
     treeshake: true,
     external: [
         "react",
@@ -39,8 +44,6 @@ export default defineConfig({
         "uuid",
         "unified",
         "remark-parse",
-        "remark-gfm",
-        "remark-rehype",
-        "rehype-stringify",
+        "remark-mdx",
     ],
 });

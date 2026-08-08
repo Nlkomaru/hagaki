@@ -4,7 +4,7 @@
  *
  *   - `startPending({ file, upload })` analyzes the file (blurhash +
  *     dimensions) and resolves immediately with an entry keyed by a UUID —
- *     the editor inserts an `::img{id="…"}` directive right away and shows
+ *     the editor inserts an `<Image imageId="…" />` component right away and shows
  *     the blurhash placeholder. AVIF encode and the upload to temporary
  *     storage continue in the background; `status` moves through
  *     "encoding" → "uploading" → "uploaded" | "error".

@@ -1,41 +1,35 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { markdownToHtml } from "hagaki/markdown";
 import { ArrowLeft, Pencil } from "lucide-react";
+import { PostBody } from "~/components/post-body";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { getHagakiClient } from "../lib/hagaki";
-import { committedImageUrl } from "../lib/post-editor-images";
 import { getStringEnv } from "../lib/server-env";
 
-const getRenderedPostFn = createServerFn({ method: "GET" })
+const getPostFn = createServerFn({ method: "GET" })
     .inputValidator((slug: string) => slug)
     .handler(async ({ data: slug }) => {
         const { env } = await import("cloudflare:workers");
         const client = await getHagakiClient();
         const post = await client.posts.getBySlug(slug);
         if (!post) return null;
-        const cdnBaseUrl = getStringEnv(env, "HAGAKI_CDN_BASE_URL");
-        const html = await markdownToHtml(post.body, {
-            cdnBaseUrl,
-            // `::img` directive の id をコミット済み CDN URL に解決する。
-            // 未指定だと src が空になるので閲覧ページでは必須。
-            imageUrlFor: (id) => committedImageUrl(id, post.uuid, cdnBaseUrl),
-        });
         return {
             title: post.title,
             slug: post.slug,
+            uuid: post.uuid,
             description: post.description,
             date: post.date,
             category: post.category,
-            html,
+            body: post.body,
+            cdnBaseUrl: getStringEnv(env, "HAGAKI_CDN_BASE_URL"),
         };
     });
 
 export const Route = createFileRoute("/posts/$slug/")({
     loader: async ({ params }) => {
-        const result = await getRenderedPostFn({ data: params.slug });
+        const result = await getPostFn({ data: params.slug });
         if (!result) throw notFound();
         return result;
     },
@@ -89,15 +83,15 @@ function PostViewPage() {
 
             <Separator />
 
-            <div className="prose prose-neutral max-w-none">
-                {/* HTML is generated server-side by remark+rehype with
-                    blurhash placeholders pre-baked as data URLs, so no
-                    client-side parsing or useEffect is needed. */}
-                <div
-                    // biome-ignore lint/security/noDangerouslySetInnerHtml: HTML is produced by a trusted server-side pipeline (gray-matter + remark + rehype) over content fetched from a private GitHub repo we control.
-                    dangerouslySetInnerHTML={{ __html: post.html }}
-                />
-            </div>
+            {/* remark-mdx + rehype-react による React 要素レンダリング。
+                本文中の <Image /> は hagaki/react の <Image>(blurhash
+                プレースホルダ内蔵)に直接マップされる。 */}
+            <PostBody
+                markdown={post.body}
+                articleId={post.uuid}
+                cdnBaseUrl={post.cdnBaseUrl}
+                className="prose prose-neutral max-w-none"
+            />
 
             <Separator />
 

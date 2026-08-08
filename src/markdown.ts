@@ -1,41 +1,41 @@
 /**
- * `hagaki/markdown` — server-side markdown → HTML rendering with image
- * placeholder hydration.
+ * `hagaki/markdown` — the `<Image />` MDX component vocabulary and its
+ * editing-time helpers.
  *
- *   - `markdownToHtml` runs remark + rehype and renders every image as a
- *     `<span data-hagaki-img>` wrapper that carries a `data:image/bmp`
- *     blurhash placeholder behind the real image and a CSS-only fade-in
- *     transition. Two source forms are supported:
- *       - `::img{id="<uuid>" blurhash=".." w=".." h=".." alt=".."}` leaf
- *         directives — the display URL is resolved through the
- *         `imageUrlFor` option;
- *       - legacy `![alt](url "blurhash=..&w=..&h=..")` images (titles as
- *         emitted by `hagaki/image` `encodeImageTitle`), resolved against
- *         the configured CDN base.
- *   - `imageDirectiveMarkdown` / `extractImageDirectiveIds` build and scan
- *     the `::img` directive form (editors insert it, save flows use the id
- *     list to know which pending uploads to commit).
- *   - `blurhashToDataUrl` is exposed for callers that want to compute the
- *     placeholder data URL directly (e.g. for a custom renderer).
+ * hagaki deliberately does NOT render markdown to HTML/React — that is the
+ * consumer's job (remark/rehype, MDX, …). What lives here:
+ *
+ *   - `imageComponentMarkdown` / `extractImageComponentIds` /
+ *     `parseImageComponentAttributes`: build and scan the
+ *     `<Image imageId="<uuid>" blurHash=".." width=".." height=".." alt=".." />`
+ *     MDX form (editors insert it, save flows use the id list to know which
+ *     pending uploads to commit). Parsing is AST-based (remark-mdx), so code
+ *     blocks and attribute forms are handled correctly. The prop names match
+ *     `hagaki/react`'s `<Image>` — MDX renderers can just pass
+ *     `components={{ Image }}`.
+ *   - `extractRepoImagePaths` / `diffRemovedImagePaths`: repo paths of the
+ *     images a body references / dropped between two body versions, for
+ *     `commitFiles`' `deletePaths`.
+ *   - `blurhashToDataUrl`: blurhash → `data:image/bmp` placeholder, for
+ *     custom renderers that don't use `hagaki/react`'s `<Image>`.
  *
  * Pure JS — safe to call from a Cloudflare Workers loader, a Node server, or
  * the browser.
  */
 export { blurhashToDataUrl } from "./markdown/blurhash-data-url.js";
-export type { ImageDirectiveAttrs } from "./markdown/directive.js";
+export type {
+    ImageComponentAttrs,
+    MdxJsxAttributeLike,
+} from "./markdown/image-jsx.js";
 export {
-    extractImageDirectiveIds,
-    IMAGE_DIRECTIVE_NAME,
-    imageDirectiveMarkdown,
-    parseImageDirectiveAttributes,
-} from "./markdown/directive.js";
+    extractImageComponentIds,
+    IMAGE_COMPONENT_NAME,
+    imageComponentMarkdown,
+    isImageComponentNode,
+    parseImageComponentAttributes,
+} from "./markdown/image-jsx.js";
 export type { ImagePathConfig } from "./markdown/images.js";
 export {
     diffRemovedImagePaths,
     extractRepoImagePaths,
 } from "./markdown/images.js";
-export type {
-    HydrateImagesOptions,
-    MarkdownToHtmlOptions,
-} from "./markdown/to-html.js";
-export { markdownToHtml } from "./markdown/to-html.js";

@@ -4,6 +4,7 @@ import {
     MAX_AVIF_BYTES,
     validateAvifUpload,
 } from "hagaki/image";
+import { getAuth } from "../lib/auth";
 
 /**
  * Temporary storage for images inserted while editing. The editor PUTs each
@@ -29,6 +30,18 @@ export const Route = createFileRoute("/api/pending-images/$uuid/$imageId")({
     server: {
         handlers: {
             PUT: async ({ request, params }) => {
+                // 書き込みはエディタ専用 — 未認証の PUT は 401 JSON で拒否
+                // (エンドポイント単位の保護、issue #2)。
+                const auth = await getAuth();
+                const session = await auth.api.getSession({
+                    headers: request.headers,
+                });
+                if (!session) {
+                    return Response.json(
+                        { error: "unauthorized" },
+                        { status: 401 },
+                    );
+                }
                 const key = pendingKey(params.uuid, params.imageId);
                 if (!key) {
                     return new Response("Invalid uuid or imageId", {

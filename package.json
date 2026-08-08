@@ -18,6 +18,10 @@
             "types": "./dist/react.d.ts",
             "import": "./dist/react.js"
         },
+        "./editor": {
+            "types": "./dist/editor.d.ts",
+            "import": "./dist/editor.js"
+        },
         "./image": {
             "types": "./dist/image.d.ts",
             "import": "./dist/image.js"
@@ -48,11 +52,8 @@
         "blurhash": "^2.0.5",
         "gray-matter": "^4.0.3",
         "octokit": "^5.0.1",
-        "rehype-stringify": "^10.0.1",
-        "remark-directive": "^4.0.0",
-        "remark-gfm": "^4.0.1",
+        "remark-mdx": "^3.1.1",
         "remark-parse": "^11.0.0",
-        "remark-rehype": "^11.1.2",
         "unified": "^11.0.5",
         "uuid": "^11.1.0"
     },
