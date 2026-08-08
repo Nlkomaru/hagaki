@@ -1,8 +1,10 @@
-import type { Octokit } from "octokit";
 import type { Committer } from "../auth/index.js";
+import type { CommitResult } from "../types.js";
+import { bytesToBase64 } from "./base64.js";
+import type { GitHubContext } from "./octokit.js";
 
 export interface CommitFile {
-    /** Repository path, e.g. `content/img/abc.avif` or `content/wiki/hello.md` */
+    /** Repository path, e.g. `content/article/<uuid>/assets/abc.avif` */
     path: string;
     content: ArrayBuffer | Uint8Array | string;
 }
@@ -18,36 +20,11 @@ export interface CommitFilesInput {
     commitMessage: string;
 }
 
-export interface CommitFilesResult {
-    commitSha: string;
-    commitUrl: string;
-    /** Added or updated paths. */
-    paths: string[];
-    /** Paths removed in this commit, if any. */
-    deletedPaths: string[];
-}
-
-export interface CommitFilesDeps {
-    octokit: Octokit;
-    owner: string;
-    repo: string;
-    branch: string;
-}
-
-function toBase64(input: ArrayBuffer | Uint8Array | string): string {
-    if (typeof input === "string") {
-        if (typeof Buffer !== "undefined") {
-            return Buffer.from(input, "utf-8").toString("base64");
-        }
-        return btoa(unescape(encodeURIComponent(input)));
+function encodeContent(content: ArrayBuffer | Uint8Array | string): string {
+    if (typeof content === "string") {
+        return bytesToBase64(new TextEncoder().encode(content));
     }
-    const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
-    if (typeof Buffer !== "undefined") {
-        return Buffer.from(bytes).toString("base64");
-    }
-    let bin = "";
-    for (const b of bytes) bin += String.fromCharCode(b);
-    return btoa(bin);
+    return bytesToBase64(content);
 }
 
 /**
@@ -57,10 +34,10 @@ function toBase64(input: ArrayBuffer | Uint8Array | string): string {
  * update + the images it no longer references).
  */
 export async function commitFiles(
-    deps: CommitFilesDeps,
+    ctx: GitHubContext,
     input: CommitFilesInput,
-): Promise<CommitFilesResult> {
-    const { octokit, owner, repo, branch } = deps;
+): Promise<CommitResult> {
+    const { octokit, owner, repo, branch } = ctx;
     const files = input.files ?? [];
     const deletePaths = dedupe(input.deletePaths ?? []);
     if (files.length === 0 && deletePaths.length === 0) {
@@ -88,7 +65,7 @@ export async function commitFiles(
             const { data } = await octokit.rest.git.createBlob({
                 owner,
                 repo,
-                content: toBase64(file.content),
+                content: encodeContent(file.content),
                 encoding: "base64",
             });
             return { path: file.path, sha: data.sha };

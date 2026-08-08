@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { articlePaths } from "hagaki";
 import {
     ImageValidationError,
     MAX_AVIF_BYTES,
@@ -90,9 +91,10 @@ export const Route = createFileRoute("/api/images/$uuid/$imageId")({
                 // cached forever.
                 const cdnBaseUrl = getStringEnv(env, "HAGAKI_CDN_BASE_URL");
                 if (cdnBaseUrl) {
-                    const cdnRes = await fetch(
-                        `${cdnBaseUrl}/article/${params.uuid}/assets/${params.imageId}.avif`,
-                    );
+                    // hagaki owns the article layout — build the CDN path from
+                    // `articlePaths` instead of restating it here.
+                    const assetUrl = `${articlePaths(params.uuid).assetUrlPrefix}${params.imageId}.avif`;
+                    const cdnRes = await fetch(`${cdnBaseUrl}${assetUrl}`);
                     if (cdnRes.ok) {
                         return new Response(cdnRes.body, {
                             headers: {

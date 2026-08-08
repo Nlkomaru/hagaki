@@ -7,7 +7,7 @@ export default defineConfig({
         image: "src/image.ts",
         markdown: "src/markdown.ts",
         "pending-images": "src/pending-images.ts",
-        "auth/better-auth": "src/auth/better-auth.ts",
+        auth: "src/auth/index.ts",
     },
     format: ["esm"],
     dts: true,

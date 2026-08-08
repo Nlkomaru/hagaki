@@ -41,9 +41,9 @@ function cleanAttrValue(value: string): string {
 
 /**
  * Parse a `w`/`h` attribute into a sane positive integer, or `undefined`.
- * Mirrors the legacy title parsing: rejects `NaN`, `Infinity`, zero,
- * negatives and absurdly large values so a malformed attribute can't drive a
- * huge buffer allocation downstream (e.g. the server-side blurhash decode).
+ * Rejects `NaN`, `Infinity`, zero, negatives and absurdly large values so a
+ * malformed attribute can't drive a huge buffer allocation downstream (e.g.
+ * the server-side blurhash decode).
  */
 function parseDimension(value: string | null | undefined): number | undefined {
     if (!value) return undefined;
@@ -116,6 +116,23 @@ export function extractImageDirectiveIds(markdown: string): string[] {
     };
     walk(directiveParser.parse(markdown) as DirectiveMdastNode);
     return [...ids];
+}
+
+/**
+ * Ids of every `::img` directive referenced by `oldBody` but no longer
+ * present in `newBody` — the images a post's save flow should delete from
+ * the `assets/` directory. Replaces the legacy `diffRemovedImagePaths`
+ * (which diffed raw repo paths); callers now work in bare directive ids and
+ * decide the file name/extension themselves.
+ */
+export function diffRemovedImageIds(
+    oldBody: string,
+    newBody: string,
+): string[] {
+    const before = extractImageDirectiveIds(oldBody);
+    if (before.length === 0) return [];
+    const after = new Set(extractImageDirectiveIds(newBody));
+    return before.filter((id) => !after.has(id));
 }
 
 /**

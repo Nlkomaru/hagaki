@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import type { WikiPostDetail } from "hagaki";
-import { diffRemovedImagePaths } from "hagaki/markdown";
+import type { PostDetail } from "hagaki";
+import { diffRemovedImageIds } from "hagaki/markdown";
 import {
     hasActive,
     hasErrors,
@@ -16,10 +16,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { imagePathsFor } from "../lib/image-paths";
 import {
     buildPostPayload,
-    handleImagePreview,
     handleInsertImage,
     imageUrl,
     sweepOrphanedImageErrors,
@@ -63,9 +61,9 @@ export const Route = createFileRoute("/posts/$slug/edit")({
 });
 
 function EditPostPage() {
-    const { post: initial, categories, cdnBaseUrl } = Route.useLoaderData();
+    const { post: initial, categories } = Route.useLoaderData();
     const router = useRouter();
-    const [post, setPost] = useState<WikiPostDetail>(initial);
+    const [post, setPost] = useState<PostDetail>(initial);
     // Snapshot of the markdown body as it currently lives on GitHub. We diff
     // this against the unsaved body at commit time so any image references the
     // user removed from the post can be deleted in the same commit.
@@ -74,7 +72,7 @@ function EditPostPage() {
     const [saving, setSaving] = useState(false);
     const [imagesUploading, setImagesUploading] = useState(false);
     const [imagesFailed, setImagesFailed] = useState(false);
-    const updatePost = (patch: Partial<WikiPostDetail>) =>
+    const updatePost = (patch: Partial<PostDetail>) =>
         setPost((current) => ({ ...current, ...patch }));
 
     useEffect(() => {
@@ -95,17 +93,16 @@ function EditPostPage() {
             const { uuid } = post;
             const { body, pendingImageIds } = await buildPostPayload(
                 post.body,
-                uuid,
                 committedBody,
             );
-            const deletePaths = diffRemovedImagePaths(
-                committedBody,
-                body,
-                imagePathsFor(uuid),
+            // Bare directive ids come back from the diff; the article's
+            // assets are always AVIF, so the file name is the id plus `.avif`.
+            const deleteAssets = diffRemovedImageIds(committedBody, body).map(
+                (id) => `${id}.avif`,
             );
             const finalPost = { ...post, body };
             const result = await commitPostFn({
-                data: { post: finalPost, pendingImageIds, deletePaths },
+                data: { post: finalPost, pendingImageIds, deleteAssets },
             });
             setPost(finalPost);
             setCommittedBody(body);
@@ -115,7 +112,7 @@ function EditPostPage() {
             for (const id of pendingImageIds) removePending(id);
             setStatusMsg({
                 kind: "success",
-                message: saveMessage(result.commitSha, deletePaths.length),
+                message: saveMessage(result.commitSha, deleteAssets.length),
             });
             // Pin the uuid in the URL so a reload before the CDN manifest
             // catches up reuses it instead of minting a duplicate article.
@@ -204,9 +201,6 @@ function EditPostPage() {
                                 // CDN(コミット済み) / R2(pending) の出し分け
                                 // はサーバールートが行うので URL は常に一つ。
                                 imageUrl(post.uuid, id)
-                            }
-                            onImagePreview={(src) =>
-                                handleImagePreview(src, cdnBaseUrl)
                             }
                         />
                     </Suspense>

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import type { WikiCategory } from "hagaki";
+import type { Category } from "hagaki";
 import { getHagakiClient } from "./hagaki";
 
 export const listCategoriesFn = createServerFn({ method: "GET" }).handler(
@@ -17,7 +17,7 @@ export const getCategoryFn = createServerFn({ method: "GET" })
 const SLUG_RE = /^[a-z0-9-]+$/;
 
 export const commitCategoryFn = createServerFn({ method: "POST" })
-    .inputValidator((category: WikiCategory) => category)
+    .inputValidator((category: Category) => category)
     .handler(async ({ data }) => {
         // The slug is concatenated straight into a repo path — never trust
         // the client to keep it inside content/categories/.

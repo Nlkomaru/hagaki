@@ -5,7 +5,6 @@ import {
     codeBlockPlugin,
     directivesPlugin,
     headingsPlugin,
-    imagePlugin,
     linkPlugin,
     listsPlugin,
     markdownShortcutPlugin,
@@ -20,9 +19,6 @@ import type { ReactNode } from "react";
 import { createImageDirectiveDescriptor } from "./image-directive.js";
 
 export interface DefaultPluginsOptions {
-    imageUploadHandler?: (file: File) => Promise<string>;
-    imagePreviewHandler?: (src: string) => Promise<string>;
-    imageAutocompleteSuggestions?: string[];
     /**
      * Display URL for a committed image id. When set, `::img` directives
      * render inline via {@link createImageDirectiveDescriptor}.
@@ -77,17 +73,6 @@ export function defaultPlugins(
         thematicBreakPlugin(),
         markdownShortcutPlugin(),
     ];
-
-    if (options.imageUploadHandler || options.imagePreviewHandler) {
-        plugins.push(
-            imagePlugin({
-                imageUploadHandler: options.imageUploadHandler,
-                imagePreviewHandler: options.imagePreviewHandler,
-                imageAutocompleteSuggestions:
-                    options.imageAutocompleteSuggestions,
-            }),
-        );
-    }
 
     if (options.toolbarContents) {
         plugins.push(

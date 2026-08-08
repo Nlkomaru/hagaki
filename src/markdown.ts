@@ -2,19 +2,16 @@
  * `hagaki/markdown` — server-side markdown → HTML rendering with image
  * placeholder hydration.
  *
- *   - `markdownToHtml` runs remark + rehype and renders every image as a
- *     `<span data-hagaki-img>` wrapper that carries a `data:image/bmp`
- *     blurhash placeholder behind the real image and a CSS-only fade-in
- *     transition. Two source forms are supported:
- *       - `::img{id="<uuid>" blurhash=".." w=".." h=".." alt=".."}` leaf
- *         directives — the display URL is resolved through the
- *         `imageUrlFor` option;
- *       - legacy `![alt](url "blurhash=..&w=..&h=..")` images (titles as
- *         emitted by `hagaki/image` `encodeImageTitle`), resolved against
- *         the configured CDN base.
+ *   - `markdownToHtml` runs remark + rehype and renders every
+ *     `::img{id="<uuid>" blurhash=".." w=".." h=".." alt=".."}` leaf
+ *     directive as a `<span data-hagaki-img>` wrapper that carries a
+ *     `data:image/bmp` blurhash placeholder behind the real image and a
+ *     CSS-only fade-in transition. The display URL is resolved through the
+ *     `imageUrlFor` option.
  *   - `imageDirectiveMarkdown` / `extractImageDirectiveIds` build and scan
  *     the `::img` directive form (editors insert it, save flows use the id
- *     list to know which pending uploads to commit).
+ *     list to know which pending uploads to commit); `diffRemovedImageIds`
+ *     diffs two bodies to find ids that were removed.
  *   - `blurhashToDataUrl` is exposed for callers that want to compute the
  *     placeholder data URL directly (e.g. for a custom renderer).
  *
@@ -24,18 +21,11 @@
 export { blurhashToDataUrl } from "./markdown/blurhash-data-url.js";
 export type { ImageDirectiveAttrs } from "./markdown/directive.js";
 export {
+    diffRemovedImageIds,
     extractImageDirectiveIds,
     IMAGE_DIRECTIVE_NAME,
     imageDirectiveMarkdown,
     parseImageDirectiveAttributes,
 } from "./markdown/directive.js";
-export type { ImagePathConfig } from "./markdown/images.js";
-export {
-    diffRemovedImagePaths,
-    extractRepoImagePaths,
-} from "./markdown/images.js";
-export type {
-    HydrateImagesOptions,
-    MarkdownToHtmlOptions,
-} from "./markdown/to-html.js";
+export type { MarkdownToHtmlOptions } from "./markdown/to-html.js";
 export { markdownToHtml } from "./markdown/to-html.js";

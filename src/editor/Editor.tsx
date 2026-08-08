@@ -5,7 +5,6 @@ import {
     codeBlockPlugin,
     directivesPlugin,
     headingsPlugin,
-    imagePlugin,
     linkPlugin,
     listsPlugin,
     MDXEditor,
@@ -50,10 +49,6 @@ export interface HagakiEditorRootProps {
      * children are ignored when this is set.
      */
     plugins?: RealmPlugin[];
-    /** Async image upload handler (returns the URL to insert into markdown). */
-    onImageUpload?: (file: File) => Promise<string>;
-    /** Async image preview handler (resolves a URL to a display-able URL). */
-    onImagePreview?: (src: string) => Promise<string>;
     /**
      * New image flow: analyze the file + start the pending upload
      * (`startPending` from `hagaki/pending-images`), resolving with the
@@ -67,8 +62,6 @@ export interface HagakiEditorRootProps {
      * without a pending entry resolve through this callback.
      */
     imagePreviewUrlFor?: (id: string) => string;
-    /** Optional autocompletion suggestions for the image dialog. */
-    imageAutocompleteSuggestions?: string[];
     className?: string;
     /** Fallback when no `<HagakiEditor.Content>` slot is provided. */
     contentEditableClassName?: string;
@@ -76,10 +69,10 @@ export interface HagakiEditorRootProps {
     suppressHtmlProcessing?: boolean;
     onError?: (e: unknown) => void;
     /**
-     * Override i18n strings for the built-in image dialog, link dialog, alt
-     * texts, etc. Either pass a `Translation` function (full control), or an
-     * `i18n` object that maps keys (`"uploadImage.addViaUrlInstructions"` etc.)
-     * to their replacements — unknown keys fall back to the default English.
+     * Override i18n strings for the built-in link dialog, alt texts, etc.
+     * Either pass a `Translation` function (full control), or an `i18n`
+     * object that maps keys (`"createLink.url"` etc.) to their replacements —
+     * unknown keys fall back to the default English.
      */
     translation?: Translation;
     i18n?: Record<string, string>;
@@ -137,17 +130,6 @@ function buildPlugins(
         markdownShortcutPlugin(),
     ];
 
-    if (props.onImageUpload || props.onImagePreview) {
-        plugins.push(
-            imagePlugin({
-                imageUploadHandler: props.onImageUpload,
-                imagePreviewHandler: props.onImagePreview,
-                imageAutocompleteSuggestions:
-                    props.imageAutocompleteSuggestions,
-            }),
-        );
-    }
-
     if (slots.toolbarChildren != null) {
         plugins.push(
             toolbarPlugin({
@@ -165,11 +147,11 @@ function buildPlugins(
  * `<HagakiEditor.Content>` to style each region independently:
  *
  * ```tsx
- * <HagakiEditor markdown={md} onChange={setMd} onImageUpload={handleUpload}>
+ * <HagakiEditor markdown={md} onChange={setMd} onInsertImage={handleInsert}>
  *   <HagakiEditor.Toolbar className="...">
  *     <HagakiEditor.UndoRedo />
  *     <HagakiEditor.BoldItalicUnderlineToggles />
- *     <HagakiEditor.InsertImage />
+ *     <HagakiEditor.InsertImage.DirectiveButton />
  *   </HagakiEditor.Toolbar>
  *   <HagakiEditor.Content className="prose p-4" />
  * </HagakiEditor>

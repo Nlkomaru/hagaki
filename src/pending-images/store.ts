@@ -43,27 +43,6 @@ function notify(): void {
     for (const fn of listeners) fn();
 }
 
-// Markdown serializers (e.g. MDXEditor) often escape the scheme colon, so a
-// `pending:<id>` URL can come back as `pending\:<id>`. Accept either form.
-const PENDING_URL_RE = /^pending\\?:(.+)$/s;
-
-/**
- * @deprecated Legacy `pending:<id>` URL scheme from the pre-directive image
- * flow. Kept only so old drafts can be detected and cleaned up.
- */
-export function pendingUrlFor(id: string): string {
-    return `pending:${id}`;
-}
-
-/**
- * @deprecated Legacy `pending:<id>` URL scheme from the pre-directive image
- * flow. Kept only so old drafts can be detected and cleaned up.
- */
-export function idFromPendingUrl(url: string): string | null {
-    const match = PENDING_URL_RE.exec(url);
-    return match ? (match[1] ?? null) : null;
-}
-
 export interface StartPendingInput {
     file: File;
     /** Sends the encoded AVIF to temporary storage; returns a preview URL. */

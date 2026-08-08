@@ -8,8 +8,6 @@ import {
     editorInTable$,
     iconComponentFor$,
     insertDirective$,
-    insertImage$,
-    openNewImageDialog$,
     readOnly$,
     Button as ToolbarButton,
 } from "@mdxeditor/editor";
@@ -219,63 +217,7 @@ export const CheckList = makeListButton({
     defaultTitle: "Check list",
 });
 
-// ─── Image controls (composable replacement for InsertImage) ─────────────
-
-/** Opens MDXEditor's built-in image dialog (URL + alt + optional upload). */
-export function InsertImageTrigger(props: HagakiEditorToolbarButtonProps) {
-    const openDialog = usePublisher(openNewImageDialog$);
-    const [iconFor, readOnly] = useCellValues(iconComponentFor$, readOnly$);
-    return (
-        <ToolbarButton
-            className={props.className}
-            disabled={readOnly}
-            title={props.title ?? "Insert image"}
-            onClick={() => openDialog()}
-        >
-            {props.children ?? icon(iconFor, "add_photo")}
-        </ToolbarButton>
-    );
-}
-
-export interface InsertImageFileButtonProps
-    extends HagakiEditorToolbarButtonProps {
-    /** `<input type="file">` accept attribute. Defaults to `image/*`. */
-    accept?: string;
-}
-
-/**
- * Bypasses the standard image dialog: opens a file picker, hands the file off
- * to the configured `onImageUpload`, then inserts the image into the document.
- * Useful when you want a "drop a file → image appears" UX.
- */
-export function InsertImageFileButton(props: InsertImageFileButtonProps) {
-    const insert = usePublisher(insertImage$);
-    const [iconFor, readOnly] = useCellValues(iconComponentFor$, readOnly$);
-    const inputRef = useRef<HTMLInputElement>(null);
-    return (
-        <>
-            <ToolbarButton
-                className={props.className}
-                disabled={readOnly}
-                title={props.title ?? "Upload image"}
-                onClick={() => inputRef.current?.click()}
-            >
-                {props.children ?? icon(iconFor, "add_photo")}
-            </ToolbarButton>
-            <input
-                ref={inputRef}
-                type="file"
-                accept={props.accept ?? "image/*"}
-                style={{ display: "none" }}
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) insert({ file, altText: "", title: "" });
-                    e.target.value = "";
-                }}
-            />
-        </>
-    );
-}
+// ─── Image controls ────────────────────────────────────────────────────
 
 export interface InsertImageDirectiveButtonProps
     extends HagakiEditorToolbarButtonProps {

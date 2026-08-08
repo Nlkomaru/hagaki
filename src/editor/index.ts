@@ -9,9 +9,6 @@ import {
     InlineCode,
     InsertImageDirectiveButton,
     type InsertImageDirectiveButtonProps,
-    InsertImageFileButton,
-    type InsertImageFileButtonProps,
-    InsertImageTrigger,
     Italic,
     NumberedList,
     Redo,
@@ -31,7 +28,6 @@ import {
     DiffSourceToggleWrapper,
     InsertAdmonition,
     InsertCodeBlock,
-    InsertImage as InsertImageRoot,
     InsertTable,
     InsertThematicBreak,
     ListsToggle,
@@ -50,28 +46,18 @@ import {
 type ToolbarButton = ComponentType<any>;
 
 /**
- * `InsertImage` keeps its original behaviour (opens MDXEditor's image dialog)
- * but is augmented with composable subcomponents:
- *
- * - `InsertImage.Trigger` — just the button that opens the standard dialog
- * - `InsertImage.FileButton` — bypasses the dialog and opens a file picker
- *   directly, then hands the file off to `onImageUpload`.
- * - `InsertImage.DirectiveButton` — file picker for the directive-based
- *   image flow: hands the file to `onInsertImage` and inserts an
- *   `::img{id="…"}` directive (requires `imagePreviewUrlFor` on the editor
- *   for inline rendering).
+ * `InsertImage.DirectiveButton` — file picker for the directive-based image
+ * flow: hands the file to `onInsertImage` and inserts an `::img{id="…"}`
+ * directive (requires `imagePreviewUrlFor` on the editor for inline
+ * rendering).
  */
-type InsertImageComponent = ToolbarButton & {
-    Trigger: ComponentType<HagakiEditorToolbarButtonProps>;
-    FileButton: ComponentType<InsertImageFileButtonProps>;
+interface InsertImageComponent {
     DirectiveButton: ComponentType<InsertImageDirectiveButtonProps>;
-};
+}
 
-const InsertImage = Object.assign(InsertImageRoot, {
-    Trigger: InsertImageTrigger,
-    FileButton: InsertImageFileButton,
+const InsertImage: InsertImageComponent = {
     DirectiveButton: InsertImageDirectiveButton,
-}) as InsertImageComponent;
+};
 
 type HagakiEditorComponent = ComponentType<HagakiEditorRootProps> & {
     Toolbar: ComponentType<HagakiEditorToolbarProps>;
@@ -112,17 +98,17 @@ type HagakiEditorComponent = ComponentType<HagakiEditorRootProps> & {
 /**
  * Composite editor. Use `<HagakiEditor.Toolbar>` / `<HagakiEditor.Content>`
  * slots to style each region, and the individual button components
- * (`<HagakiEditor.Bold>`, `<HagakiEditor.InsertImage.FileButton>`, …) to style
- * each control. Pass a custom `plugins` prop for full plugin override.
+ * (`<HagakiEditor.Bold>`, `<HagakiEditor.InsertImage.DirectiveButton>`, …) to
+ * style each control. Pass a custom `plugins` prop for full plugin override.
  *
  * @example
- * <HagakiEditor markdown={md} onChange={setMd} onImageUpload={handleUpload}>
+ * <HagakiEditor markdown={md} onChange={setMd} onInsertImage={handleInsert}>
  *   <HagakiEditor.Toolbar className="border-b px-2 py-1">
  *     <HagakiEditor.Undo />
  *     <HagakiEditor.Redo />
  *     <HagakiEditor.Bold />
  *     <HagakiEditor.Italic />
- *     <HagakiEditor.InsertImage.FileButton />
+ *     <HagakiEditor.InsertImage.DirectiveButton />
  *   </HagakiEditor.Toolbar>
  *   <HagakiEditor.Content className="prose px-4 py-3 min-h-[400px]" />
  * </HagakiEditor>
@@ -166,7 +152,6 @@ export type {
 export type {
     HagakiEditorToolbarButtonProps,
     InsertImageDirectiveButtonProps,
-    InsertImageFileButtonProps,
 } from "./buttons.js";
 export type { HagakiEditorContentProps } from "./Content.js";
 export type { HagakiEditorProps, HagakiEditorRootProps } from "./Editor.js";
