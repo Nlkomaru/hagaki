@@ -20,7 +20,7 @@ const getPostFn = createServerFn({ method: "GET" })
             slug: post.slug,
             uuid: post.uuid,
             description: post.description,
-            created: post.created,
+            date: post.date,
             category: post.category,
             body: post.body,
             cdnBaseUrl: getStringEnv(env, "HAGAKI_CDN_BASE_URL"),
@@ -70,7 +70,7 @@ function PostViewPage() {
                         <Badge variant="secondary">{post.category}</Badge>
                     )}
                     <span className="text-xs text-muted-foreground">
-                        {post.created?.slice(0, 10)}
+                        {post.date}
                     </span>
                 </div>
                 <h1 className="mb-0">{post.title || post.slug}</h1>

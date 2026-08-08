@@ -7,5 +7,3 @@ node_modules
 # generated index files
 content/article.json
 content/categories.json
-content/slug-index.json
-content/article/*/info.json

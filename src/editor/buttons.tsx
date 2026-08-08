@@ -22,7 +22,6 @@ import {
     UNDO_COMMAND,
 } from "lexical";
 import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { blurhashToBase64 } from "../markdown/blurhash64.js";
 import {
     IMAGE_COMPONENT_NAME,
     type ImageComponentAttrs,
@@ -287,7 +286,7 @@ export interface InsertImageComponentButtonProps
 /**
  * File picker for the MDX image flow: hands the file to the editor's
  * `onInsertImage` (via {@link ImageComponentContext}) and inserts an
- * `<Image imageId="…" blurHash64="…" width="…" height="…" alt="" />` component
+ * `<Image imageId="…" blurHash="…" width="…" height="…" alt="" />` component
  * with the attributes it resolves to. The blurhash placeholder shows
  * immediately while the AVIF encode + upload continue in the background.
  *
@@ -321,9 +320,7 @@ export function InsertImageComponentButton(
             // width/height back to numbers.
             props: {
                 imageId: attrs.id,
-                ...(attrs.blurhash
-                    ? { blurHash64: blurhashToBase64(attrs.blurhash) }
-                    : {}),
+                ...(attrs.blurhash ? { blurHash: attrs.blurhash } : {}),
                 ...(attrs.width != null ? { width: String(attrs.width) } : {}),
                 ...(attrs.height != null
                     ? { height: String(attrs.height) }

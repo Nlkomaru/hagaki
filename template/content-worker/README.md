@@ -10,19 +10,15 @@ hagaki の `HAGAKI_CDN_BASE_URL` が指す先です。
 content/
 ├── article/                  # 記事ごとのディレクトリ (uuid 名)
 │   └── <uuid>/
-│       ├── index.mdx         #   記事本体 (frontmatter 必須: slug, uuid)
-│       ├── info.json         #   ← generate-lists.ts が生成 (履歴マージ済みメタデータ)
+│       ├── index.md          #   記事本体 (frontmatter 必須: slug, uuid)
 │       └── assets/<file>     #   その記事専用の画像
 ├── categories/               # カテゴリ JSON
 ├── article.json              # ← scripts/generate-lists.ts が生成
-├── slug-index.json           # ← 同上 (slug → uuid)
 └── categories.json           # ← 同上
 ```
 
-生成される `*.json` は git 管理外。デプロイ前に必ず `pnpm generate` で
-作り直すこと (`.github/workflows/deploy.yml` は push 時にこれを自動で行う)。
-`info.json` の履歴は frontmatter の `modified` (移行元の履歴) と git の
-コミット履歴をマージしたもの — 浅い clone では git 分が欠けるので注意。
+`*.json` のインデックスファイルは git 管理外。デプロイ前に必ず
+`pnpm generate` で作り直すこと。
 
 旧 `wiki/` + `img/` レイアウトからの移行は `pnpm migrate`
 (`scripts/migrate-to-article.ts`) で行えます。
@@ -33,10 +29,8 @@ content/
 
 | パス | 内容 |
 |---|---|
-| `/article.json` | 記事一覧 (`hagaki.posts.list()` が読む) |
-| `/slug-index.json` | slug → uuid マップ (`getPostBySlug` の O(1) 解決用) |
-| `/article/<uuid>/index.mdx` | 個別記事 (`hagaki.posts.getBySlug()` / `getByUuid()` が読む) |
-| `/article/<uuid>/info.json` | 記事メタデータ (履歴マージ済み) |
+| `/article.json` | 記事一覧 (`hagaki.posts.list()` が読む。slug→uuid 解決にも使う) |
+| `/article/<uuid>/index.md` | 個別記事 (`hagaki.posts.getBySlug()` / `getByUuid()` が読む) |
 | `/article/<uuid>/assets/<filename>` | その記事の画像本体 |
 | `/categories.json` | カテゴリ一覧 |
 

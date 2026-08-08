@@ -1,5 +1,4 @@
 import {
-    blurhashToBase64,
     isImageComponentNode,
     type MdxJsxAttributeLike,
     parseImageComponentAttributes,
@@ -21,7 +20,7 @@ import { committedImageUrl } from "../lib/post-editor-images";
 /**
  * 記事本文の markdown (MDX) → React レンダリング。
  *
- * remark-mdx で `<Image imageId=… blurHash64=… width=… height=… alt=… />` を
+ * remark-mdx で `<Image imageId=… blurHash=… width=… height=… alt=… />` を
  * 拾い、hagaki/react の `<Image>`(blurhash プレースホルダ + フェードイン
  * 内蔵)にマップする。HTML 文字列 + dangerouslySetInnerHTML の経路は廃止
  * 済み。Workers では eval が使えないため @mdx-js/mdx の evaluate ではなく
@@ -91,10 +90,7 @@ function mapSpecialNode(node: MdNode, source: string): MdNode {
             hName: "hagaki-img",
             hProperties: {
                 imageid: attrs.id,
-                // hast 属性は文字列運搬 — 保存形の base64 に揃える。
-                blurhash64: attrs.blurhash
-                    ? blurhashToBase64(attrs.blurhash)
-                    : undefined,
+                blurhash: attrs.blurhash ?? undefined,
                 w: attrs.width ?? undefined,
                 h: attrs.height ?? undefined,
                 alt: attrs.alt ?? undefined,
@@ -132,7 +128,7 @@ function toDimension(value: unknown): number | undefined {
 
 function HagakiImg(props: {
     imageid?: string;
-    blurhash64?: string;
+    blurhash?: string;
     w?: string | number;
     h?: string | number;
     alt?: string;
@@ -140,7 +136,7 @@ function HagakiImg(props: {
     return (
         <Image
             imageId={props.imageid ?? ""}
-            blurHash64={props.blurhash64}
+            blurHash={props.blurhash}
             width={toDimension(props.w)}
             height={toDimension(props.h)}
             alt={props.alt ?? ""}
