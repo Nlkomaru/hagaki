@@ -4,16 +4,23 @@ import {
     MAX_AVIF_BYTES,
     validateAvifUpload,
 } from "hagaki/image";
+import { getStringEnv } from "~/lib/server-env";
 
 /**
- * Temporary storage for images inserted while editing. The editor PUTs each
- * encoded AVIF here as soon as it is ready, then GETs it back as the in-editor
- * preview until the post is saved (at which point `commitPostFn` moves the
- * bytes into the GitHub repo and deletes the pending object).
+ * Single URL for every `::img` directive image, backed by two stores:
  *
- * Objects live in the `HAGAKI_PENDING_IMAGES` R2 bucket under
- * `pending/<postUuid>/<imageId>.avif`; an R2 lifecycle rule on the `pending/`
- * prefix cleans up uploads that were never saved (see wrangler.jsonc).
+ *   GET  — serves the committed copy from the CDN (GitHub-backed
+ *          content-worker) when it exists, and falls back to the pending R2
+ *          object otherwise. Callers never need to know whether an image has
+ *          been committed yet or whether the CDN deploy has caught up — the
+ *          route picks the source automatically.
+ *   PUT  — uploads an encoded AVIF into the pending R2 bucket while editing.
+ *
+ * Pending objects live in `HAGAKI_PENDING_IMAGES` under
+ * `pending/<postUuid>/<imageId>.avif`. They are intentionally NOT deleted on
+ * commit: they bridge the window until the content-worker redeploy makes the
+ * CDN copy available, and the R2 lifecycle rule on the `pending/` prefix
+ * expires them afterwards (see wrangler.jsonc).
  */
 
 // Both path segments are uuids that end up in an R2 object key — reject
@@ -25,7 +32,7 @@ function pendingKey(uuid: string, imageId: string): string | null {
     return `pending/${uuid}/${imageId}.avif`;
 }
 
-export const Route = createFileRoute("/api/pending-images/$uuid/$imageId")({
+export const Route = createFileRoute("/api/images/$uuid/$imageId")({
     server: {
         handlers: {
             PUT: async ({ request, params }) => {
@@ -77,6 +84,28 @@ export const Route = createFileRoute("/api/pending-images/$uuid/$imageId")({
                     });
                 }
                 const { env } = await import("cloudflare:workers");
+
+                // Committed copy first. Image ids are minted per upload and
+                // the bytes at a given path never change, so a CDN hit can be
+                // cached forever.
+                const cdnBaseUrl = getStringEnv(env, "HAGAKI_CDN_BASE_URL");
+                if (cdnBaseUrl) {
+                    const cdnRes = await fetch(
+                        `${cdnBaseUrl}/article/${params.uuid}/assets/${params.imageId}.avif`,
+                    );
+                    if (cdnRes.ok) {
+                        return new Response(cdnRes.body, {
+                            headers: {
+                                "Content-Type": "image/avif",
+                                "Cache-Control":
+                                    "public, max-age=31536000, immutable",
+                            },
+                        });
+                    }
+                }
+
+                // Not on the CDN (yet) — fall back to the pending R2 copy.
+                // Never cacheable: the next request should retry the CDN.
                 const object = await env.HAGAKI_PENDING_IMAGES.get(key);
                 if (!object) {
                     return new Response("Not found", { status: 404 });
@@ -84,8 +113,6 @@ export const Route = createFileRoute("/api/pending-images/$uuid/$imageId")({
                 return new Response(object.body, {
                     headers: {
                         "Content-Type": "image/avif",
-                        // Preview only — the canonical URL after saving is the
-                        // CDN one, so never let this response stick in caches.
                         "Cache-Control": "private, no-store",
                     },
                 });

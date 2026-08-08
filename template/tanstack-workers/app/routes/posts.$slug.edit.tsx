@@ -2,7 +2,6 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { WikiPostDetail } from "hagaki";
 import { diffRemovedImagePaths } from "hagaki/markdown";
 import {
-    getPending,
     hasActive,
     hasErrors,
     removePending,
@@ -20,9 +19,9 @@ import { cn } from "~/lib/utils";
 import { imagePathsFor } from "../lib/image-paths";
 import {
     buildPostPayload,
-    committedImageUrl,
     handleImagePreview,
     handleInsertImage,
+    imageUrl,
     sweepOrphanedImageErrors,
 } from "../lib/post-editor-images";
 import { commitPostFn, getEditorPostFn } from "../lib/post-editor-server";
@@ -202,11 +201,9 @@ function EditPostPage() {
                                 handleInsertImage(file, post.uuid)
                             }
                             imagePreviewUrlFor={(id) =>
-                                // pending 中は descriptor が store を直接見る
-                                // ので、ここはアップロード完了後のプレビュー
-                                // URL とコミット済み CDN URL の解決を担う。
-                                getPending(id)?.previewUrl ??
-                                committedImageUrl(id, post.uuid, cdnBaseUrl)
+                                // CDN(コミット済み) / R2(pending) の出し分け
+                                // はサーバールートが行うので URL は常に一つ。
+                                imageUrl(post.uuid, id)
                             }
                             onImagePreview={(src) =>
                                 handleImagePreview(src, cdnBaseUrl)

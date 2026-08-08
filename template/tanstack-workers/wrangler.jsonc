@@ -31,9 +31,12 @@
     },
     // 編集中の画像を一時保存する R2 バケット。デプロイ前に
     // `wrangler r2 bucket create hagaki-pending-images` で作成すること。
-    // 保存されずに放置されたアップロードは
+    //
+    // pending オブジェクトはコミット後も意図的に消さない — /api/images が
+    // CDN(コミット済み) → R2(pending) の順で自動フォールバックするため、
+    // content-worker 再デプロイまでの反映ラグを R2 側が埋める。掃除は
+    // 下のライフサイクルルールだけが担うので、設定は必須:
     // `wrangler r2 bucket lifecycle add hagaki-pending-images --prefix pending/ --expire-days 7`
-    // のライフサイクルルールで自動掃除できる。
     "r2_buckets": [
         {
             "binding": "HAGAKI_PENDING_IMAGES",

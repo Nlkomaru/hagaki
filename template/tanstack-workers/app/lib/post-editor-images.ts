@@ -9,7 +9,6 @@ import {
     removePending,
     startPending,
 } from "hagaki/pending-images";
-import { imagePathsFor } from "./image-paths";
 
 // `pending\\?:` — the markdown serializer may escape the scheme colon, so a
 // legacy body can read `pending\:<id>`. These references come from the old
@@ -24,24 +23,14 @@ function hasUnresolvedPendingImage(body: string): boolean {
     return new RegExp(PENDING_IMG_SRC).test(body);
 }
 
-/** 編集中プレビュー URL（Workers の一時配信、R2 バックエンド）。 */
-export function pendingImagePreviewUrl(
-    postUuid: string,
-    imageId: string,
-): string {
-    return `/api/pending-images/${postUuid}/${imageId}`;
-}
-
-/** コミット済み画像の表示 URL（CDN）。 */
-export function committedImageUrl(
-    id: string,
-    postUuid: string,
-    cdnBaseUrl: string,
-): string {
-    return resolveCdnUrl(
-        `${imagePathsFor(postUuid).urlPrefix}${id}.avif`,
-        cdnBaseUrl,
-    );
+/**
+ * `::img` directive 画像の唯一の表示 URL。コミット済みかどうか・CDN の
+ * デプロイが追いついたかどうかはサーバールート側が自動で出し分ける
+ * （CDN にあれば CDN、無ければ pending R2 フォールバック）ので、呼び側は
+ * 画像の状態を気にしなくてよい。PUT 先（pending アップロード）も同じ URL。
+ */
+export function imageUrl(postUuid: string, imageId: string): string {
+    return `/api/images/${postUuid}/${imageId}`;
 }
 
 /**
@@ -56,7 +45,7 @@ export async function handleInsertImage(
     const entry = await startPending({
         file,
         upload: async ({ id, avif }) => {
-            const url = pendingImagePreviewUrl(postUuid, id);
+            const url = imageUrl(postUuid, id);
             const res = await fetch(url, {
                 method: "PUT",
                 headers: { "Content-Type": "application/octet-stream" },

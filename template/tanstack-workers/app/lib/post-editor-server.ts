@@ -64,8 +64,12 @@ export const getEditorPostFn = createServerFn({ method: "GET" })
  * re-validates it, then commits the markdown post, those images, AND any
  * images the editor wants removed in a single GitHub tree commit. Combining
  * add/update/delete in one commit keeps `git revert` and the editor's view
- * of the repo in sync. The pending R2 objects are deleted only after the
- * commit succeeded.
+ * of the repo in sync.
+ *
+ * The pending R2 objects are deliberately NOT deleted here: `/api/images`
+ * keeps serving them until the content-worker redeploy makes the CDN copy
+ * available, and the R2 lifecycle rule on the `pending/` prefix expires
+ * them automatically afterwards.
  */
 export const commitPostFn = createServerFn({ method: "POST" })
     .inputValidator((input: CommitPostInput) => input)
@@ -103,7 +107,6 @@ export const commitPostFn = createServerFn({ method: "POST" })
 
         const { env } = await import("cloudflare:workers");
         const imageFiles: { path: string; content: Uint8Array }[] = [];
-        const pendingKeys: string[] = [];
         for (const id of data.pendingImageIds) {
             if (!UUID_REGEX.test(id)) {
                 throw new Error(`commitPostFn: invalid image id "${id}"`);
@@ -120,7 +123,6 @@ export const commitPostFn = createServerFn({ method: "POST" })
             const path = `${assetsPrefix}${id}.avif`;
             assertOwned(path, "write");
             imageFiles.push({ path, content });
-            pendingKeys.push(pendingKey);
         }
 
         const deletePaths = data.deletePaths ?? [];
@@ -143,20 +145,6 @@ export const commitPostFn = createServerFn({ method: "POST" })
                 deletePaths.length,
             ),
         });
-
-        // The bytes now live in the repo — the pending copies are garbage.
-        // Deletion failures are non-fatal: the R2 lifecycle rule on the
-        // `pending/` prefix cleans up anything we miss here.
-        if (pendingKeys.length > 0) {
-            try {
-                await env.HAGAKI_PENDING_IMAGES.delete(pendingKeys);
-            } catch (e) {
-                console.warn(
-                    "commitPostFn: failed to delete pending images",
-                    e,
-                );
-            }
-        }
 
         return result;
     });
