@@ -7,7 +7,7 @@
  *
  *   - `imageComponentMarkdown` / `extractImageComponentIds` /
  *     `parseImageComponentAttributes`: build and scan the
- *     `<Image imageId="<uuid>" blurHash=".." width=".." height=".." alt=".." />`
+ *     `<Image imageId="<uuid>" blurHash64=".." width=".." height=".." alt=".." />`
  *     MDX form (editors insert it, save flows use the id list to know which
  *     pending uploads to commit). Parsing is AST-based (remark-mdx), so code
  *     blocks and attribute forms are handled correctly. The prop names match
@@ -18,11 +18,17 @@
  *     `commitFiles`' `deletePaths`.
  *   - `blurhashToDataUrl`: blurhash → `data:image/bmp` placeholder, for
  *     custom renderers that don't use `hagaki/react`'s `<Image>`.
+ *   - `blurhashToBase64` / `blurhashFromBase64`: the stored `blurhash64`
+ *     form (raw base83 is unsafe in YAML/JSX attributes).
  *
  * Pure JS — safe to call from a Cloudflare Workers loader, a Node server, or
  * the browser.
  */
 export { blurhashToDataUrl } from "./markdown/blurhash-data-url.js";
+export {
+    blurhashFromBase64,
+    blurhashToBase64,
+} from "./markdown/blurhash64.js";
 export type {
     ImageComponentAttrs,
     MdxJsxAttributeLike,

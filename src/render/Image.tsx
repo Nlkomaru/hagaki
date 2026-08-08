@@ -9,6 +9,7 @@ import {
     useState,
 } from "react";
 import { blurhashToDataUrl } from "../markdown/blurhash-data-url.js";
+import { blurhashFromBase64 } from "../markdown/blurhash64.js";
 
 export interface HagakiImageUrlInput {
     articleId: string;
@@ -58,7 +59,8 @@ export interface HagakiImageProps {
     articleId?: string;
     /** File name inside the article's assets directory. */
     imageId: string;
-    blurHash?: string;
+    /** Base64-encoded blurhash — the stored MDX form (`blurhash64`). */
+    blurHash64?: string;
     /**
      * Intrinsic size — reserves the box via `aspect-ratio` before load.
      * Strings are accepted (and coerced) so the MDX form
@@ -106,7 +108,7 @@ export function Image(props: HagakiImageProps) {
     const articleId = props.articleId ?? ctx.articleId ?? "";
     const urlFor = props.urlFor ?? ctx.urlFor ?? defaultImageUrl;
     const src = props.src ?? urlFor({ articleId, imageId: props.imageId });
-    const { blurHash } = props;
+    const blurHash = blurhashFromBase64(props.blurHash64);
     const width = toDimension(props.width);
     const height = toDimension(props.height);
 
