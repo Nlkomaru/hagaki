@@ -15,6 +15,7 @@ export {
     DiffSourceToggleWrapper,
     InsertAdmonition,
     InsertCodeBlock,
+    InsertImage,
     InsertTable,
     InsertThematicBreak,
     ListsToggle,

@@ -2,19 +2,13 @@ import { createFileRoute, useRouter } from "@tanstack/react-router";
 import type { WikiPostDetail } from "hagaki";
 import { diffRemovedImagePaths } from "hagaki/markdown";
 import {
-    clearAll as clearPending,
-    hasUnprocessed,
+    getPending,
+    hasActive,
+    hasErrors,
+    removePending,
     subscribe as subscribePending,
 } from "hagaki/pending-images";
-import { HagakiImageConfig } from "hagaki/react";
-import {
-    lazy,
-    type ReactNode,
-    Suspense,
-    useEffect,
-    useMemo,
-    useState,
-} from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { CategoryInput } from "~/components/CategoryInput";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -23,8 +17,14 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { articleAssetsRepoDir, cdnImageUrlFor } from "../lib/image-paths";
-import { buildPostPayload, handleImageUpload } from "../lib/post-editor-images";
+import { imagePathsFor } from "../lib/image-paths";
+import {
+    buildPostPayload,
+    committedImageUrl,
+    handleImagePreview,
+    handleInsertImage,
+    sweepOrphanedImageErrors,
+} from "../lib/post-editor-images";
 import { commitPostFn, getEditorPostFn } from "../lib/post-editor-server";
 
 // MDXEditor (透過に hagaki が wrap している) は client-only なので、
@@ -73,13 +73,16 @@ function EditPostPage() {
     const [committedBody, setCommittedBody] = useState(initial.body);
     const [statusMsg, setStatusMsg] = useState<StatusMessage | null>(null);
     const [saving, setSaving] = useState(false);
-    const [imagesProcessing, setImagesProcessing] = useState(false);
-    const urlFor = useMemo(() => cdnImageUrlFor(cdnBaseUrl), [cdnBaseUrl]);
+    const [imagesUploading, setImagesUploading] = useState(false);
+    const [imagesFailed, setImagesFailed] = useState(false);
     const updatePost = (patch: Partial<WikiPostDetail>) =>
         setPost((current) => ({ ...current, ...patch }));
 
     useEffect(() => {
-        const update = () => setImagesProcessing(hasUnprocessed());
+        const update = () => {
+            setImagesUploading(hasActive());
+            setImagesFailed(hasErrors());
+        };
         update();
         return subscribePending(update);
     }, []);
@@ -91,17 +94,26 @@ function EditPostPage() {
             // uuid is minted in the loader (emptyPost) so it stays stable for
             // the whole session — a retried save hits the same article dir.
             const { uuid } = post;
-            const { body, images } = await buildPostPayload(post.body, uuid);
-            const deletePaths = diffRemovedImagePaths(committedBody, body, {
-                repoDir: articleAssetsRepoDir(uuid),
-            });
+            const { body, pendingImageIds } = await buildPostPayload(
+                post.body,
+                uuid,
+                committedBody,
+            );
+            const deletePaths = diffRemovedImagePaths(
+                committedBody,
+                body,
+                imagePathsFor(uuid),
+            );
             const finalPost = { ...post, body };
             const result = await commitPostFn({
-                data: { post: finalPost, images, deletePaths },
+                data: { post: finalPost, pendingImageIds, deletePaths },
             });
             setPost(finalPost);
             setCommittedBody(body);
-            clearPending();
+            // コミットに載った分だけ破棄する。clearAll だと、この保存が
+            // 走っている間に挿入された（= 今回のコミットに入っていない）
+            // 画像のエントリまで消え、次の保存で復元不能になる。
+            for (const id of pendingImageIds) removePending(id);
             setStatusMsg({
                 kind: "success",
                 message: saveMessage(result.commitSha, deletePaths.length),
@@ -171,25 +183,36 @@ function EditPostPage() {
             <div className="flex flex-col gap-1.5">
                 <Label>Body</Label>
                 <div className="rounded-lg border bg-card overflow-hidden">
-                    {/* HagakiImageConfig が editor 内の ::img descriptor
-                        (閲覧ページと同じ <Image>)の URL 解決を担う。
-                        pending:<id> のプレビューは descriptor 側が blob URL で
-                        処理するため、ここでは committed 画像の CDN 解決だけ。 */}
-                    <HagakiImageConfig articleId={post.uuid} urlFor={urlFor}>
-                        <Suspense
-                            fallback={
-                                <div className="p-4 text-sm text-muted-foreground">
-                                    エディタを読み込み中…
-                                </div>
+                    <Suspense
+                        fallback={
+                            <div className="p-4 text-sm text-muted-foreground">
+                                エディタを読み込み中…
+                            </div>
+                        }
+                    >
+                        <Editor
+                            markdown={post.body}
+                            onChange={(body) => {
+                                // 本文から消えた失敗画像のエントリを回収し、
+                                // 保存ボタンが永久に無効化されるのを防ぐ。
+                                sweepOrphanedImageErrors(body);
+                                updatePost({ body });
+                            }}
+                            onInsertImage={(file) =>
+                                handleInsertImage(file, post.uuid)
                             }
-                        >
-                            <Editor
-                                markdown={post.body}
-                                onChange={(body) => updatePost({ body })}
-                                onImageUpload={handleImageUpload}
-                            />
-                        </Suspense>
-                    </HagakiImageConfig>
+                            imagePreviewUrlFor={(id) =>
+                                // pending 中は descriptor が store を直接見る
+                                // ので、ここはアップロード完了後のプレビュー
+                                // URL とコミット済み CDN URL の解決を担う。
+                                getPending(id)?.previewUrl ??
+                                committedImageUrl(id, post.uuid, cdnBaseUrl)
+                            }
+                            onImagePreview={(src) =>
+                                handleImagePreview(src, cdnBaseUrl)
+                            }
+                        />
+                    </Suspense>
                 </div>
             </div>
 
@@ -208,19 +231,24 @@ function EditPostPage() {
             )}
 
             <div className="sticky bottom-0 -mx-4 md:-mx-6 border-t bg-background/80 px-4 md:px-6 py-3 backdrop-blur flex items-center justify-end gap-3">
-                {imagesProcessing && (
+                {imagesUploading && (
                     <span className="text-sm text-muted-foreground">
-                        画像のエンコード待ち…
+                        画像のアップロード待ち…
+                    </span>
+                )}
+                {imagesFailed && (
+                    <span className="text-sm text-destructive">
+                        画像のアップロードに失敗しています
                     </span>
                 )}
                 <Button
                     type="button"
-                    disabled={saving || imagesProcessing}
+                    disabled={saving || imagesUploading || imagesFailed}
                     onClick={onSave}
                 >
                     {saving
                         ? "保存中…"
-                        : imagesProcessing
+                        : imagesUploading
                           ? "画像処理中…"
                           : "保存"}
                 </Button>

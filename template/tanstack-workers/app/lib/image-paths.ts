@@ -1,22 +1,17 @@
-import { resolveCdnUrl } from "hagaki";
-import type { HagakiImageUrlResolver } from "hagaki/react";
+import type { ImagePathConfig } from "hagaki/markdown";
 
 /**
  * Per-article image locations. Each post owns a directory
  * `content/article/<uuid>/`, so its images live under
- * `content/article/<uuid>/assets/` and are addressed in the markdown body by
- * a `::img{id="<file>"}` directive — the URL is resolved at render time from
- * `articleId` + `imageId`.
+ * `content/article/<uuid>/assets/` and are referenced in the markdown body
+ * as `/article/<uuid>/assets/<file>`.
+ *
+ * Used by the upload flow (writes these paths) and by the save flow (diffs
+ * them to figure out which blobs to delete).
  */
-export function articleAssetsRepoDir(uuid: string): string {
-    return `content/article/${uuid}/assets/`;
-}
-
-/**
- * `<Image>` URL resolver for this app: images are served straight from the
- * content CDN (Workers Assets) under `/article/<uuid>/assets/<file>`.
- */
-export function cdnImageUrlFor(cdnBaseUrl: string): HagakiImageUrlResolver {
-    return ({ articleId, imageId }) =>
-        resolveCdnUrl(`/article/${articleId}/assets/${imageId}`, cdnBaseUrl);
+export function imagePathsFor(uuid: string): ImagePathConfig {
+    return {
+        urlPrefix: `/article/${uuid}/assets/`,
+        repoDir: `content/article/${uuid}/assets/`,
+    };
 }

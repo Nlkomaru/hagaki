@@ -35,6 +35,17 @@
         // "HAGAKI_GITHUB_CONTENT_PATH": "content/wiki",
         // "HAGAKI_CDN_BASE_URL": "https://content-hagaki.<subdomain>.workers.dev"
     },
+    // 編集中の画像を一時保存する R2 バケット。デプロイ前に
+    // `wrangler r2 bucket create hagaki-pending-images` で作成すること。
+    // 保存されずに放置されたアップロードは
+    // `wrangler r2 bucket lifecycle add hagaki-pending-images --prefix pending/ --expire-days 7`
+    // のライフサイクルルールで自動掃除できる。
+    "r2_buckets": [
+        {
+            "binding": "HAGAKI_PENDING_IMAGES",
+            "bucket_name": "hagaki-pending-images"
+        }
+    ],
     // HAGAKI_GITHUB_TOKEN は Cloudflare Secrets Store (BSM: hagaki/HAGAKI_GITHUB_TOKEN)、
     // AUTH_SECRET は同 (BSM: shared/AUTH_SECRET) から供給する
     "secrets_store_secrets": [

@@ -42,5 +42,8 @@ export default defineConfig({
         "@jsquash/avif/encode",
         "blurhash",
         "uuid",
+        "unified",
+        "remark-parse",
+        "remark-directive",
     ],
 });

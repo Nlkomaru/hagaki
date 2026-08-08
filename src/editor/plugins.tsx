@@ -5,6 +5,7 @@ import {
     codeBlockPlugin,
     directivesPlugin,
     headingsPlugin,
+    imagePlugin,
     linkPlugin,
     listsPlugin,
     markdownShortcutPlugin,
@@ -16,15 +17,17 @@ import {
     UndoRedo,
 } from "@mdxeditor/editor";
 import type { ReactNode } from "react";
-import { imageDirectiveDescriptor } from "./image-directive.js";
-import {
-    hagakiImageUploadPlugin,
-    type ImageUploadHandler,
-} from "./image-upload.js";
+import { createImageDirectiveDescriptor } from "./image-directive.js";
 
 export interface DefaultPluginsOptions {
-    /** See `HagakiEditorRootProps.onImageUpload`. */
-    onImageUpload?: ImageUploadHandler;
+    imageUploadHandler?: (file: File) => Promise<string>;
+    imagePreviewHandler?: (src: string) => Promise<string>;
+    imageAutocompleteSuggestions?: string[];
+    /**
+     * Display URL for a committed image id. When set, `::img` directives
+     * render inline via {@link createImageDirectiveDescriptor}.
+     */
+    imagePreviewUrlFor?: (id: string) => string;
     toolbarContents?: () => ReactNode;
     toolbarClassName?: string;
 }
@@ -58,10 +61,16 @@ export function defaultPlugins(
         tablePlugin(),
         listsPlugin(),
         directivesPlugin({
-            directiveDescriptors: [
-                imageDirectiveDescriptor,
-                AdmonitionDirectiveDescriptor,
-            ],
+            // The image descriptor must come before the admonition one so it
+            // claims `::img` leaf directives first.
+            directiveDescriptors: options.imagePreviewUrlFor
+                ? [
+                      createImageDirectiveDescriptor({
+                          previewUrlFor: options.imagePreviewUrlFor,
+                      }),
+                      AdmonitionDirectiveDescriptor,
+                  ]
+                : [AdmonitionDirectiveDescriptor],
         }),
         codeBlockPlugin(),
         quotePlugin(),
@@ -69,9 +78,14 @@ export function defaultPlugins(
         markdownShortcutPlugin(),
     ];
 
-    if (options.onImageUpload) {
+    if (options.imageUploadHandler || options.imagePreviewHandler) {
         plugins.push(
-            hagakiImageUploadPlugin({ onImageUpload: options.onImageUpload }),
+            imagePlugin({
+                imageUploadHandler: options.imageUploadHandler,
+                imagePreviewHandler: options.imagePreviewHandler,
+                imageAutocompleteSuggestions:
+                    options.imageAutocompleteSuggestions,
+            }),
         );
     }
 

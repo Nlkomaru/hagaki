@@ -1,7 +1,10 @@
 /**
- * Browser-only image processing pipeline:
- *   File → bitmap → resize → AVIF encode (WASM via @jsquash/avif)
- *                          → blurhash (4x4 components)
+ * Browser-only image processing pipeline, split in two stages:
+ *   1. `analyzeImage`: File → bitmap → output dimensions + blurhash
+ *      (4x4 components) — fast, so the editor can show a placeholder early
+ *   2. `encodeAnalyzedImage`: bitmap → resize → AVIF encode (WASM via
+ *      @jsquash/avif) — slow, runs in the background
+ * `processImage` chains both for callers that want the one-shot result.
  *
  * Relies on `createImageBitmap`, `OffscreenCanvas`/`HTMLCanvasElement`, and
  * the AVIF WASM module — none of which exist in Cloudflare Workers SSR, so
@@ -52,49 +55,102 @@ export interface ProcessImageOptions {
     maxBytes?: number;
 }
 
+export interface AnalyzedImage {
+    blurhash: string;
+    /** Target AVIF output width (after the long-edge clamp). */
+    width: number;
+    /** Target AVIF output height (after the long-edge clamp). */
+    height: number;
+    /**
+     * Decoded source bitmap, handed off to {@link encodeAnalyzedImage} which
+     * closes it when done. Callers must not close it themselves.
+     */
+    bitmap: ImageBitmap;
+    originalName: string;
+    originalType: string;
+}
+
+/**
+ * Fast first stage: decode the file, pick the output dimensions, and compute
+ * the blurhash — everything needed to show a placeholder in the editor before
+ * the (slow) AVIF encode has even started.
+ */
+export async function analyzeImage(
+    file: File,
+    options?: ProcessImageOptions,
+): Promise<AnalyzedImage> {
+    const maxDimension = options?.maxDimension ?? MAX_IMAGE_DIMENSION;
+
+    const bitmap = await loadBitmap(file);
+    try {
+        const { width, height } = fitDimensions(
+            bitmap.width,
+            bitmap.height,
+            maxDimension,
+        );
+        const blurhash = await makeBlurhash(bitmap);
+        return {
+            blurhash,
+            width,
+            height,
+            bitmap,
+            originalName: file.name,
+            originalType: file.type,
+        };
+    } catch (e) {
+        bitmap.close?.();
+        throw e;
+    }
+}
+
+/**
+ * Slow second stage: AVIF-encode the analyzed bitmap and enforce the byte
+ * cap. Closes `analyzed.bitmap` when it finishes (success or failure).
+ */
+export async function encodeAnalyzedImage(
+    analyzed: AnalyzedImage,
+    options?: ProcessImageOptions,
+): Promise<Uint8Array> {
+    const quality = options?.quality ?? AVIF_QUALITY;
+    const maxBytes = options?.maxBytes ?? MAX_AVIF_BYTES;
+
+    try {
+        const { bitmap, width, height } = analyzed;
+        const resized = drawToCanvas(bitmap, width, height);
+        const imageData = canvasToImageData(resized, width, height);
+
+        const avifBuffer = await encode(imageData, {
+            quality,
+            speed: AVIF_SPEED,
+        });
+        const avif = new Uint8Array(avifBuffer);
+        if (avif.byteLength > maxBytes) {
+            throw new ImageProcessingError(
+                `Encoded AVIF is ${Math.round(avif.byteLength / 1024)} KB (limit: ${
+                    maxBytes / 1024
+                } KB). Try a smaller source image.`,
+                "too-large",
+            );
+        }
+        return avif;
+    } finally {
+        analyzed.bitmap.close?.();
+    }
+}
+
 export async function processImage(
     file: File,
     options?: ProcessImageOptions,
 ): Promise<ProcessedImage> {
-    const maxDimension = options?.maxDimension ?? MAX_IMAGE_DIMENSION;
-    const quality = options?.quality ?? AVIF_QUALITY;
-    const maxBytes = options?.maxBytes ?? MAX_AVIF_BYTES;
-
-    const bitmap = await loadBitmap(file);
-    const { width, height } = fitDimensions(
-        bitmap.width,
-        bitmap.height,
-        maxDimension,
-    );
-
-    const resized = drawToCanvas(bitmap, width, height);
-    const imageData = canvasToImageData(resized, width, height);
-
-    const avifBuffer = await encode(imageData, {
-        quality,
-        speed: AVIF_SPEED,
-    });
-    const avif = new Uint8Array(avifBuffer);
-    if (avif.byteLength > maxBytes) {
-        throw new ImageProcessingError(
-            `Encoded AVIF is ${Math.round(avif.byteLength / 1024)} KB (limit: ${
-                maxBytes / 1024
-            } KB). Try a smaller source image.`,
-            "too-large",
-        );
-    }
-
-    const blurhash = await makeBlurhash(bitmap);
-
-    bitmap.close?.();
-
+    const analyzed = await analyzeImage(file, options);
+    const avif = await encodeAnalyzedImage(analyzed, options);
     return {
         avif,
-        blurhash,
-        width,
-        height,
-        originalName: file.name,
-        originalType: file.type,
+        blurhash: analyzed.blurhash,
+        width: analyzed.width,
+        height: analyzed.height,
+        originalName: analyzed.originalName,
+        originalType: analyzed.originalType,
     };
 }
 

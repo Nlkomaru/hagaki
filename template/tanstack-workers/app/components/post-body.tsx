@@ -1,3 +1,4 @@
+import { parseImageDirectiveAttributes } from "hagaki/markdown";
 import { HagakiImageConfig, Image } from "hagaki/react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -9,7 +10,7 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
-import { cdnImageUrlFor } from "../lib/image-paths";
+import { committedImageUrl } from "../lib/post-editor-images";
 
 /**
  * 記事本文の markdown → React レンダリング。
@@ -63,14 +64,17 @@ function visit(node: MdNode, source: string): MdNode {
 
 function mapDirective(node: MdNode, source: string): MdNode {
     if (node.type === "leafDirective" && node.name === "img") {
-        const attrs = node.attributes ?? {};
+        // id の uuid 検証と w/h の正規化は hagaki の AST 用パーサに任せる
+        // (`#<uuid>` ショートカット形も attributes.id に入ってくる)。
+        const attrs = parseImageDirectiveAttributes(node.attributes);
+        if (!attrs) return { type: "text", value: "" };
         node.data = {
             hName: "hagaki-img",
             hProperties: {
-                imageid: attrs.id ?? "",
+                imageid: attrs.id,
                 blurhash: attrs.blurhash ?? undefined,
-                w: attrs.w ?? undefined,
-                h: attrs.h ?? undefined,
+                w: attrs.width ?? undefined,
+                h: attrs.height ?? undefined,
                 alt: attrs.alt ?? undefined,
             },
         };
@@ -166,7 +170,19 @@ export interface PostBodyProps {
 
 export function PostBody(props: PostBodyProps) {
     const { markdown, articleId, cdnBaseUrl, className } = props;
-    const urlFor = useMemo(() => cdnImageUrlFor(cdnBaseUrl), [cdnBaseUrl]);
+    // ::img の id (uuid) → コミット済み CDN URL(`<id>.avif`)。
+    const urlFor = useMemo(
+        () =>
+            ({
+                articleId: id,
+                imageId,
+            }: {
+                articleId: string;
+                imageId: string;
+            }) =>
+                committedImageUrl(imageId, id, cdnBaseUrl),
+        [cdnBaseUrl],
+    );
     const content = useMemo(
         () => processor.processSync(markdown).result,
         [markdown],
