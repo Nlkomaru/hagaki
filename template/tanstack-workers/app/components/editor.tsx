@@ -1,13 +1,13 @@
 "use client";
-import { HagakiEditor } from "hagaki/react";
+import { HagakiEditor } from "hagaki/editor";
 import { ImagePlus } from "lucide-react";
 import { editorI18n } from "./editor-i18n";
 
 export interface EditorProps {
     markdown: string;
     onChange: (markdown: string) => void;
+    /** 画像アップロード。挿入する ::img directive の id を返す。 */
     onImageUpload?: (file: File) => Promise<string>;
-    onImagePreview?: (src: string) => Promise<string>;
 }
 
 /**
@@ -22,7 +22,6 @@ export function Editor(props: EditorProps) {
                 markdown={props.markdown}
                 onChange={props.onChange}
                 onImageUpload={props.onImageUpload}
-                onImagePreview={props.onImagePreview}
                 i18n={editorI18n}
                 className="bg-card text-foreground [&_[role=dialog]]:bg-card [&_[role=dialog]]:border [&_[role=dialog]]:border-border [&_[role=dialog]]:rounded-lg [&_[role=dialog]]:p-6 [&_[role=dialog]]:text-foreground [&_[role=dialog]_label]:text-sm [&_[role=dialog]_label]:font-medium [&_[role=dialog]_label]:text-muted-foreground [&_[role=dialog]_input[type=text]]:rounded-md [&_[role=dialog]_input[type=text]]:border [&_[role=dialog]_input[type=text]]:border-input [&_[role=dialog]_input[type=text]]:bg-background [&_[role=dialog]_input[type=text]]:px-3 [&_[role=dialog]_input[type=text]]:py-1.5 [&_[role=dialog]_input[type=text]]:text-sm"
             >

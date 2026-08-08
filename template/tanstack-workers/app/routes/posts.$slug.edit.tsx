@@ -6,7 +6,15 @@ import {
     hasUnprocessed,
     subscribe as subscribePending,
 } from "hagaki/pending-images";
-import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { HagakiImageConfig } from "hagaki/react";
+import {
+    lazy,
+    type ReactNode,
+    Suspense,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
 import { CategoryInput } from "~/components/CategoryInput";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -15,12 +23,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
-import { imagePathsFor } from "../lib/image-paths";
-import {
-    buildPostPayload,
-    handleImagePreview,
-    handleImageUpload,
-} from "../lib/post-editor-images";
+import { articleAssetsRepoDir, cdnImageUrlFor } from "../lib/image-paths";
+import { buildPostPayload, handleImageUpload } from "../lib/post-editor-images";
 import { commitPostFn, getEditorPostFn } from "../lib/post-editor-server";
 
 // MDXEditor (透過に hagaki が wrap している) は client-only なので、
@@ -70,6 +74,7 @@ function EditPostPage() {
     const [statusMsg, setStatusMsg] = useState<StatusMessage | null>(null);
     const [saving, setSaving] = useState(false);
     const [imagesProcessing, setImagesProcessing] = useState(false);
+    const urlFor = useMemo(() => cdnImageUrlFor(cdnBaseUrl), [cdnBaseUrl]);
     const updatePost = (patch: Partial<WikiPostDetail>) =>
         setPost((current) => ({ ...current, ...patch }));
 
@@ -87,11 +92,9 @@ function EditPostPage() {
             // the whole session — a retried save hits the same article dir.
             const { uuid } = post;
             const { body, images } = await buildPostPayload(post.body, uuid);
-            const deletePaths = diffRemovedImagePaths(
-                committedBody,
-                body,
-                imagePathsFor(uuid),
-            );
+            const deletePaths = diffRemovedImagePaths(committedBody, body, {
+                repoDir: articleAssetsRepoDir(uuid),
+            });
             const finalPost = { ...post, body };
             const result = await commitPostFn({
                 data: { post: finalPost, images, deletePaths },
@@ -168,22 +171,25 @@ function EditPostPage() {
             <div className="flex flex-col gap-1.5">
                 <Label>Body</Label>
                 <div className="rounded-lg border bg-card overflow-hidden">
-                    <Suspense
-                        fallback={
-                            <div className="p-4 text-sm text-muted-foreground">
-                                エディタを読み込み中…
-                            </div>
-                        }
-                    >
-                        <Editor
-                            markdown={post.body}
-                            onChange={(body) => updatePost({ body })}
-                            onImageUpload={handleImageUpload}
-                            onImagePreview={(src) =>
-                                handleImagePreview(src, cdnBaseUrl)
+                    {/* HagakiImageConfig が editor 内の ::img descriptor
+                        (閲覧ページと同じ <Image>)の URL 解決を担う。
+                        pending:<id> のプレビューは descriptor 側が blob URL で
+                        処理するため、ここでは committed 画像の CDN 解決だけ。 */}
+                    <HagakiImageConfig articleId={post.uuid} urlFor={urlFor}>
+                        <Suspense
+                            fallback={
+                                <div className="p-4 text-sm text-muted-foreground">
+                                    エディタを読み込み中…
+                                </div>
                             }
-                        />
-                    </Suspense>
+                        >
+                            <Editor
+                                markdown={post.body}
+                                onChange={(body) => updatePost({ body })}
+                                onImageUpload={handleImageUpload}
+                            />
+                        </Suspense>
+                    </HagakiImageConfig>
                 </div>
             </div>
 

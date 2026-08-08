@@ -1,5 +1,9 @@
-import { resolveCdnUrl } from "hagaki";
-import { encodeImageTitle } from "hagaki/image";
+import {
+    type ImgDirectiveMeta,
+    imgDirective,
+    isPendingImageId,
+    replaceImgDirectives,
+} from "hagaki/markdown";
 import {
     addPending,
     getPending,
@@ -7,24 +11,16 @@ import {
     pendingUrlFor,
 } from "hagaki/pending-images";
 import { bytesToBase64 } from "./base64";
-import { imagePathsFor } from "./image-paths";
+import { articleAssetsRepoDir } from "./image-paths";
 import type { UploadedImage } from "./post-editor-markdown";
 
-// `pending\\?:` — the markdown serializer may escape the scheme colon, so
-// the committed body can read `pending\:<id>`. Match both forms or the save
-// path skips the upload and commits a dead `pending:` reference.
-const PENDING_IMG_SRC =
-    /!\[([^\]]*)\]\((pending\\?:[a-f0-9-]+)(?:\s+"[^"]*")?\)/;
-const PENDING_IMG_REGEX = new RegExp(PENDING_IMG_SRC, "g");
-
-// A leftover *image* `pending:` reference after resolution means an upload
-// didn't make it into the commit — refuse to save rather than persist junk.
-// Matching the image syntax (not a bare `pending:` substring) avoids false
-// positives on literal `pending:<id>` text inside code blocks/prose.
-function hasUnresolvedPendingImage(body: string): boolean {
-    return new RegExp(PENDING_IMG_SRC).test(body);
-}
-
+/**
+ * Editor upload handler: kicks off AVIF encode + blurhash in the background
+ * and returns a session-local `pending:<id>` image id. The editor stores it
+ * in the inserted `::img` directive; {@link buildPostPayload} rewrites it to
+ * the final `<id>.avif` file name (with blurhash/w/h attributes) at save
+ * time.
+ */
 export async function handleImageUpload(file: File): Promise<string> {
     const processing = import("hagaki/image").then(({ processImage }) =>
         processImage(file),
@@ -34,16 +30,13 @@ export async function handleImageUpload(file: File): Promise<string> {
     return pendingUrlFor(entry.id);
 }
 
-export async function handleImagePreview(
-    src: string,
-    cdnBaseUrl: string,
-): Promise<string> {
-    const id = idFromPendingUrl(src);
-    if (id) {
-        const entry = getPending(id);
-        if (entry) return entry.previewBlobUrl;
-    }
-    return resolveCdnUrl(src, cdnBaseUrl);
+function collectPendingIds(markdown: string): string[] {
+    const ids = new Set<string>();
+    replaceImgDirectives(markdown, (meta) => {
+        if (isPendingImageId(meta.id)) ids.add(meta.id);
+        return null;
+    });
+    return [...ids];
 }
 
 export async function buildPostPayload(
@@ -54,23 +47,20 @@ export async function buildPostPayload(
     images: UploadedImage[];
 }> {
     const resolved = new Map<string, ResolvedImage>();
-    for (const match of markdown.matchAll(PENDING_IMG_REGEX)) {
-        const placeholder = match[2];
-        if (!placeholder || resolved.has(placeholder)) continue;
+    for (const placeholder of collectPendingIds(markdown)) {
         resolved.set(placeholder, await resolvePendingImage(placeholder, uuid));
     }
 
-    const body = markdown.replace(
-        PENDING_IMG_REGEX,
-        (full: string, alt: string, placeholder: string) => {
-            const image = resolved.get(placeholder);
-            return image ? `![${alt}](${image.replacement})` : full;
-        },
-    );
+    const body = replaceImgDirectives(markdown, (meta) => {
+        const image = resolved.get(meta.id);
+        // 解決済みメタ(最終ファイル名 + blurhash/w/h)で directive を再構築。
+        // alt はユーザー入力なので元の値を引き継ぐ。
+        return image ? imgDirective({ ...image.meta, alt: meta.alt }) : null;
+    });
 
-    // Re-check the result with the same image syntax: anything still
-    // unresolved means the upload never landed — block the save.
-    if (hasUnresolvedPendingImage(body)) {
+    // A leftover `pending:` id after resolution means an upload didn't make
+    // it into the commit — refuse to save rather than persist junk.
+    if (collectPendingIds(body).length > 0) {
         throw new Error(
             "An image is still uploading or failed to process. Wait for the upload to finish, or remove the image, then save again.",
         );
@@ -83,7 +73,7 @@ export async function buildPostPayload(
 }
 
 interface ResolvedImage {
-    replacement: string;
+    meta: ImgDirectiveMeta;
     upload: UploadedImage;
 }
 
@@ -101,17 +91,16 @@ async function resolvePendingImage(
 
     const processed = await entry.processing;
     const filename = `${entry.id}.avif`;
-    const title = encodeImageTitle({
-        blurhash: processed.blurhash,
-        width: processed.width,
-        height: processed.height,
-    });
-    const paths = imagePathsFor(uuid);
 
     return {
-        replacement: `${paths.urlPrefix}${filename} "${title}"`,
+        meta: {
+            id: filename,
+            blurhash: processed.blurhash,
+            width: processed.width,
+            height: processed.height,
+        },
         upload: {
-            path: `${paths.repoDir}${filename}`,
+            path: `${articleAssetsRepoDir(uuid)}${filename}`,
             avifBase64: bytesToBase64(processed.avif),
         },
     };

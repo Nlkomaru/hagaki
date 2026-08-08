@@ -5,7 +5,6 @@ import {
     codeBlockPlugin,
     directivesPlugin,
     headingsPlugin,
-    imagePlugin,
     linkPlugin,
     listsPlugin,
     markdownShortcutPlugin,
@@ -17,11 +16,15 @@ import {
     UndoRedo,
 } from "@mdxeditor/editor";
 import type { ReactNode } from "react";
+import { imageDirectiveDescriptor } from "./image-directive.js";
+import {
+    hagakiImageUploadPlugin,
+    type ImageUploadHandler,
+} from "./image-upload.js";
 
 export interface DefaultPluginsOptions {
-    imageUploadHandler?: (file: File) => Promise<string>;
-    imagePreviewHandler?: (src: string) => Promise<string>;
-    imageAutocompleteSuggestions?: string[];
+    /** See `HagakiEditorRootProps.onImageUpload`. */
+    onImageUpload?: ImageUploadHandler;
     toolbarContents?: () => ReactNode;
     toolbarClassName?: string;
 }
@@ -55,7 +58,10 @@ export function defaultPlugins(
         tablePlugin(),
         listsPlugin(),
         directivesPlugin({
-            directiveDescriptors: [AdmonitionDirectiveDescriptor],
+            directiveDescriptors: [
+                imageDirectiveDescriptor,
+                AdmonitionDirectiveDescriptor,
+            ],
         }),
         codeBlockPlugin(),
         quotePlugin(),
@@ -63,14 +69,9 @@ export function defaultPlugins(
         markdownShortcutPlugin(),
     ];
 
-    if (options.imageUploadHandler || options.imagePreviewHandler) {
+    if (options.onImageUpload) {
         plugins.push(
-            imagePlugin({
-                imageUploadHandler: options.imageUploadHandler,
-                imagePreviewHandler: options.imagePreviewHandler,
-                imageAutocompleteSuggestions:
-                    options.imageAutocompleteSuggestions,
-            }),
+            hagakiImageUploadPlugin({ onImageUpload: options.onImageUpload }),
         );
     }
 

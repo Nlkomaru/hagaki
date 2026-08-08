@@ -5,7 +5,6 @@ import {
     codeBlockPlugin,
     directivesPlugin,
     headingsPlugin,
-    imagePlugin,
     linkPlugin,
     listsPlugin,
     MDXEditor,
@@ -25,6 +24,8 @@ import {
     type ReactNode,
 } from "react";
 import { Content } from "./Content.js";
+import { imageDirectiveDescriptor } from "./image-directive.js";
+import { hagakiImageUploadPlugin } from "./image-upload.js";
 import { defaultPlugins } from "./plugins.js";
 import { Toolbar } from "./Toolbar.js";
 
@@ -44,12 +45,14 @@ export interface HagakiEditorRootProps {
      * children are ignored when this is set.
      */
     plugins?: RealmPlugin[];
-    /** Async image upload handler (returns the URL to insert into markdown). */
+    /**
+     * Async image upload handler. Returns the image id to store in the
+     * inserted `::img` directive — typically a `pending:<uuid>` placeholder
+     * (see `hagaki/pending-images`) rewritten to the final file name at save
+     * time. Image URL/preview resolution is configured separately via
+     * `<HagakiImageConfig>` from `hagaki/react`.
+     */
     onImageUpload?: (file: File) => Promise<string>;
-    /** Async image preview handler (resolves a URL to a display-able URL). */
-    onImagePreview?: (src: string) => Promise<string>;
-    /** Optional autocompletion suggestions for the image dialog. */
-    imageAutocompleteSuggestions?: string[];
     className?: string;
     /** Fallback when no `<HagakiEditor.Content>` slot is provided. */
     contentEditableClassName?: string;
@@ -101,7 +104,10 @@ function buildPlugins(
         tablePlugin(),
         listsPlugin(),
         directivesPlugin({
-            directiveDescriptors: [AdmonitionDirectiveDescriptor],
+            directiveDescriptors: [
+                imageDirectiveDescriptor,
+                AdmonitionDirectiveDescriptor,
+            ],
         }),
         codeBlockPlugin(),
         quotePlugin(),
@@ -109,14 +115,9 @@ function buildPlugins(
         markdownShortcutPlugin(),
     ];
 
-    if (props.onImageUpload || props.onImagePreview) {
+    if (props.onImageUpload) {
         plugins.push(
-            imagePlugin({
-                imageUploadHandler: props.onImageUpload,
-                imagePreviewHandler: props.onImagePreview,
-                imageAutocompleteSuggestions:
-                    props.imageAutocompleteSuggestions,
-            }),
+            hagakiImageUploadPlugin({ onImageUpload: props.onImageUpload }),
         );
     }
 

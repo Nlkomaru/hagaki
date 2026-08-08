@@ -7,8 +7,7 @@ import {
     currentListType$,
     editorInTable$,
     iconComponentFor$,
-    insertImage$,
-    openNewImageDialog$,
+    insertDirective$,
     readOnly$,
     Button as ToolbarButton,
 } from "@mdxeditor/editor";
@@ -21,6 +20,7 @@ import {
     UNDO_COMMAND,
 } from "lexical";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { imageUploadHandler$ } from "./image-upload.js";
 
 // Bitflags used by MDXEditor's `currentFormat$`. Mirrors `FormatConstants.ts`
 // inside @mdxeditor/editor (not exported, so we duplicate).
@@ -37,8 +37,7 @@ export interface HagakiEditorToolbarButtonProps {
     title?: string;
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: MDXEditor's IconKey is a union of all
-// known names; passing a string we know exists is safe.
+// biome-ignore lint/suspicious/noExplicitAny: MDXEditor's IconKey is a union of all known names; passing a string we know exists is safe.
 const icon = (fn: (name: any) => ReactNode, name: string) => fn(name);
 
 // ─── Undo / Redo ─────────────────────────────────────────────────────────
@@ -212,44 +211,32 @@ export const CheckList = makeListButton({
     defaultTitle: "Check list",
 });
 
-// ─── Image controls (composable replacement for InsertImage) ─────────────
-
-/** Opens MDXEditor's built-in image dialog (URL + alt + optional upload). */
-export function InsertImageTrigger(props: HagakiEditorToolbarButtonProps) {
-    const openDialog = usePublisher(openNewImageDialog$);
-    const [iconFor, readOnly] = useCellValues(iconComponentFor$, readOnly$);
-    return (
-        <ToolbarButton
-            className={props.className}
-            disabled={readOnly}
-            title={props.title ?? "Insert image"}
-            onClick={() => openDialog()}
-        >
-            {props.children ?? icon(iconFor, "add_photo")}
-        </ToolbarButton>
-    );
-}
+// ─── Image controls ──────────────────────────────────────────────────────
 
 export interface InsertImageFileButtonProps
     extends HagakiEditorToolbarButtonProps {
     /** `<input type="file">` accept attribute. Defaults to `image/*`. */
     accept?: string;
+    /** Called when the configured upload handler rejects. */
+    onError?: (error: unknown) => void;
 }
 
 /**
- * Bypasses the standard image dialog: opens a file picker, hands the file off
- * to the configured `onImageUpload`, then inserts the image into the document.
- * Useful when you want a "drop a file → image appears" UX.
+ * Opens a file picker, hands the file to the handler registered via
+ * `hagakiImageUploadPlugin` (`onImageUpload`), then inserts a `::img` leaf
+ * directive whose `id` is the handler's return value — typically a
+ * `pending:<uuid>` placeholder resolved to the final file name at save time.
  */
 export function InsertImageFileButton(props: InsertImageFileButtonProps) {
-    const insert = usePublisher(insertImage$);
+    const insertDirective = usePublisher(insertDirective$);
+    const uploadHandler = useCellValue(imageUploadHandler$);
     const [iconFor, readOnly] = useCellValues(iconComponentFor$, readOnly$);
     const inputRef = useRef<HTMLInputElement>(null);
     return (
         <>
             <ToolbarButton
                 className={props.className}
-                disabled={readOnly}
+                disabled={readOnly || !uploadHandler}
                 title={props.title ?? "Upload image"}
                 onClick={() => inputRef.current?.click()}
             >
@@ -260,10 +247,20 @@ export function InsertImageFileButton(props: InsertImageFileButtonProps) {
                 type="file"
                 accept={props.accept ?? "image/*"}
                 style={{ display: "none" }}
-                onChange={(e) => {
+                onChange={async (e) => {
                     const file = e.target.files?.[0];
-                    if (file) insert({ file, altText: "", title: "" });
                     e.target.value = "";
+                    if (!file || !uploadHandler) return;
+                    try {
+                        const imageId = await uploadHandler(file);
+                        insertDirective({
+                            type: "leafDirective",
+                            name: "img",
+                            attributes: { id: imageId },
+                        });
+                    } catch (error) {
+                        props.onError?.(error);
+                    }
                 }}
             />
         </>

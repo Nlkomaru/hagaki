@@ -2,3 +2,7 @@ packages:
   - "."
   - "template/tanstack-workers"
   - "template/content-worker"
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true

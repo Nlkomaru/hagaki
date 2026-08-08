@@ -1,10 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import type { WikiPostDetail } from "hagaki";
 import { validateAvifUpload } from "hagaki/image";
+import { requireSession } from "./auth-server";
 import { base64ToBytes } from "./base64";
+import { resolveCommitter } from "./committer";
 import { getHagakiClient } from "./hagaki";
 import {
-    stripLegacyPendingImages,
+    stripStalePendingImages,
     type UploadedImage,
 } from "./post-editor-markdown";
 import { emptyPost, postFrontmatter } from "./post-frontmatter";
@@ -33,11 +35,14 @@ interface GetEditorPostInput {
 export const getEditorPostFn = createServerFn({ method: "GET" })
     .inputValidator((input: GetEditorPostInput) => input)
     .handler(async ({ data }) => {
+        // エンドポイント単位の保護: server fn は直接叩ける RPC なので、
+        // レイアウト側の beforeLoad ではなくここで検証する(未認証 401)。
+        await requireSession();
         const { env } = await import("cloudflare:workers");
         const client = await getHagakiClient();
         const existing = await client.posts.getBySlug(data.slug);
         const post = existing
-            ? { ...existing, body: stripLegacyPendingImages(existing.body) }
+            ? { ...existing, body: stripStalePendingImages(existing.body) }
             : {
                   ...emptyPost(data.slug, data.knownUuid),
                   title: data.seed?.title ?? "",
@@ -59,6 +64,10 @@ export const getEditorPostFn = createServerFn({ method: "GET" })
 export const commitPostFn = createServerFn({ method: "POST" })
     .inputValidator((input: CommitPostInput) => input)
     .handler(async ({ data }) => {
+        await requireSession();
+        // Committer は userinfo 由来の Minecraft UUID + MCID(session.user.id
+        // は DB-less では不安定なため使わない — lib/committer.ts)。
+        const committer = await resolveCommitter();
         if (!data.post.uuid) {
             throw new Error(
                 "commitPostFn: post.uuid is required (mint one on first save)",
@@ -103,6 +112,7 @@ export const commitPostFn = createServerFn({ method: "POST" })
         return client.commits.commitFiles({
             files: [...imageFiles, { path: postPath, content: markdown }],
             deletePaths,
+            committer,
             commitMessage: commitMessage(
                 data.post.slug,
                 data.images.length,

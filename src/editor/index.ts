@@ -9,7 +9,6 @@ import {
     InlineCode,
     InsertImageFileButton,
     type InsertImageFileButtonProps,
-    InsertImageTrigger,
     Italic,
     NumberedList,
     Redo,
@@ -29,7 +28,6 @@ import {
     DiffSourceToggleWrapper,
     InsertAdmonition,
     InsertCodeBlock,
-    InsertImage as InsertImageRoot,
     InsertTable,
     InsertThematicBreak,
     ListsToggle,
@@ -48,22 +46,19 @@ import {
 type ToolbarButton = ComponentType<any>;
 
 /**
- * `InsertImage` keeps its original behaviour (opens MDXEditor's image dialog)
- * but is augmented with composable subcomponents:
- *
- * - `InsertImage.Trigger` — just the button that opens the standard dialog
- * - `InsertImage.FileButton` — bypasses the dialog and opens a file picker
- *   directly, then hands the file off to `onImageUpload`.
+ * Image insertion is directive-based: `InsertImage.FileButton` opens a file
+ * picker, hands the file to `onImageUpload`, and inserts a `::img` leaf
+ * directive rendered by the same `<Image>` component as the read-only view.
+ * (MDXEditor's URL dialog / `imagePlugin` path was removed together with
+ * standard `![]()` image support.)
  */
-type InsertImageComponent = ToolbarButton & {
-    Trigger: ComponentType<HagakiEditorToolbarButtonProps>;
+interface InsertImageComponent {
     FileButton: ComponentType<InsertImageFileButtonProps>;
-};
+}
 
-const InsertImage = Object.assign(InsertImageRoot, {
-    Trigger: InsertImageTrigger,
+const InsertImage: InsertImageComponent = {
     FileButton: InsertImageFileButton,
-}) as InsertImageComponent;
+};
 
 type HagakiEditorComponent = ComponentType<HagakiEditorRootProps> & {
     Toolbar: ComponentType<HagakiEditorToolbarProps>;
@@ -161,6 +156,12 @@ export type {
 } from "./buttons.js";
 export type { HagakiEditorContentProps } from "./Content.js";
 export type { HagakiEditorProps, HagakiEditorRootProps } from "./Editor.js";
+export { imageDirectiveDescriptor } from "./image-directive.js";
+export {
+    hagakiImageUploadPlugin,
+    type ImageUploadHandler,
+    imageUploadHandler$,
+} from "./image-upload.js";
 export {
     type DefaultPluginsOptions,
     defaultPlugins,
