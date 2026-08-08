@@ -6,6 +6,7 @@ import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { getHagakiClient } from "../lib/hagaki";
+import { committedImageUrl } from "../lib/post-editor-images";
 import { getStringEnv } from "../lib/server-env";
 
 const getRenderedPostFn = createServerFn({ method: "GET" })
@@ -16,7 +17,12 @@ const getRenderedPostFn = createServerFn({ method: "GET" })
         const post = await client.posts.getBySlug(slug);
         if (!post) return null;
         const cdnBaseUrl = getStringEnv(env, "HAGAKI_CDN_BASE_URL");
-        const html = await markdownToHtml(post.body, { cdnBaseUrl });
+        const html = await markdownToHtml(post.body, {
+            cdnBaseUrl,
+            // `::img` directive の id をコミット済み CDN URL に解決する。
+            // 未指定だと src が空になるので閲覧ページでは必須。
+            imageUrlFor: (id) => committedImageUrl(id, post.uuid, cdnBaseUrl),
+        });
         return {
             title: post.title,
             slug: post.slug,

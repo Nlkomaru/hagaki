@@ -1,3 +1,5 @@
+import { extractImageDirectiveIds } from "./directive.js";
+
 const IMG_REGEX = /!\[[^\]]*\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g;
 
 export interface ImagePathConfig {
@@ -20,9 +22,13 @@ function normalizePrefix(value: string): string {
 
 /**
  * Walk a markdown body and return the repository paths of every embedded
- * image whose URL lives under `config.urlPrefix`. External URLs
- * (`http(s)://`, `data:`, etc.) and session-local placeholders (e.g.
- * `pending:<id>`) are skipped — only paths the caller owns are returned.
+ * image the caller owns:
+ *
+ *   - legacy `![alt](url)` references whose URL lives under
+ *     `config.urlPrefix` (external `http(s)://`, `data:` and session-local
+ *     `pending:<id>` placeholders are skipped), and
+ *   - `::img{id="<uuid>"}` directives, whose blobs live at
+ *     `<repoDir><id>.avif` by convention.
  *
  * Useful for diff'ing the "before" and "after" of a post to figure out which
  * image blobs should be cleaned up when the post is saved.
@@ -40,6 +46,9 @@ export function extractRepoImagePaths(
         const filename = url.slice(urlPrefix.length);
         if (!filename) continue;
         paths.add(`${repoDir}${filename}`);
+    }
+    for (const id of extractImageDirectiveIds(markdown)) {
+        paths.add(`${repoDir}${id}.avif`);
     }
     return [...paths];
 }
