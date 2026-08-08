@@ -23,8 +23,14 @@ import {
     isValidElement,
     type MutableRefObject,
     type ReactNode,
+    useMemo,
 } from "react";
+import type { ImageDirectiveAttrs } from "../markdown/directive.js";
 import { Content } from "./Content.js";
+import {
+    createImageDirectiveDescriptor,
+    ImageDirectiveContext,
+} from "./image-directive.js";
 import { defaultPlugins } from "./plugins.js";
 import { Toolbar } from "./Toolbar.js";
 
@@ -48,6 +54,19 @@ export interface HagakiEditorRootProps {
     onImageUpload?: (file: File) => Promise<string>;
     /** Async image preview handler (resolves a URL to a display-able URL). */
     onImagePreview?: (src: string) => Promise<string>;
+    /**
+     * New image flow: analyze the file + start the pending upload
+     * (`startPending` from `hagaki/pending-images`), resolving with the
+     * attributes for the `::img` directive to insert. Consumed by
+     * `<HagakiEditor.InsertImage.DirectiveButton>`.
+     */
+    onInsertImage?: (file: File) => Promise<ImageDirectiveAttrs>;
+    /**
+     * New image flow: display URL for a committed image id. When set, `::img`
+     * directives render inline (blurhash placeholder + upload progress); ids
+     * without a pending entry resolve through this callback.
+     */
+    imagePreviewUrlFor?: (id: string) => string;
     /** Optional autocompletion suggestions for the image dialog. */
     imageAutocompleteSuggestions?: string[];
     className?: string;
@@ -101,7 +120,16 @@ function buildPlugins(
         tablePlugin(),
         listsPlugin(),
         directivesPlugin({
-            directiveDescriptors: [AdmonitionDirectiveDescriptor],
+            // The image descriptor must come before the admonition one so it
+            // claims `::img` leaf directives first.
+            directiveDescriptors: props.imagePreviewUrlFor
+                ? [
+                      createImageDirectiveDescriptor({
+                          previewUrlFor: props.imagePreviewUrlFor,
+                      }),
+                      AdmonitionDirectiveDescriptor,
+                  ]
+                : [AdmonitionDirectiveDescriptor],
         }),
         codeBlockPlugin(),
         quotePlugin(),
@@ -181,6 +209,7 @@ export function HagakiEditorRoot(props: HagakiEditorRootProps) {
         contentEditableClassName,
         suppressHtmlProcessing = true,
         onError,
+        onInsertImage,
         translation,
         i18n,
     } = props;
@@ -188,21 +217,31 @@ export function HagakiEditorRoot(props: HagakiEditorRootProps) {
     const slots = plugins ? {} : resolveSlots(children);
     const finalPlugins = plugins ?? buildPlugins(props, slots);
     const finalTranslation = resolveTranslation(translation, i18n);
+    // Carries the directive-flow insert handler down to the toolbar button
+    // regardless of whether plugins were overridden.
+    const imageDirectiveContext = useMemo(
+        () => ({ onInsertImage, onError }),
+        [onInsertImage, onError],
+    );
 
     return (
-        <MDXEditor
-            ref={editorRef}
-            markdown={markdown}
-            onChange={onChange}
-            onError={onError}
-            suppressHtmlProcessing={suppressHtmlProcessing}
-            plugins={finalPlugins.length > 0 ? finalPlugins : defaultPlugins()}
-            className={className}
-            contentEditableClassName={
-                slots.contentClassName ?? contentEditableClassName
-            }
-            translation={finalTranslation}
-        />
+        <ImageDirectiveContext.Provider value={imageDirectiveContext}>
+            <MDXEditor
+                ref={editorRef}
+                markdown={markdown}
+                onChange={onChange}
+                onError={onError}
+                suppressHtmlProcessing={suppressHtmlProcessing}
+                plugins={
+                    finalPlugins.length > 0 ? finalPlugins : defaultPlugins()
+                }
+                className={className}
+                contentEditableClassName={
+                    slots.contentClassName ?? contentEditableClassName
+                }
+                translation={finalTranslation}
+            />
+        </ImageDirectiveContext.Provider>
     );
 }
 

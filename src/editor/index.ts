@@ -7,6 +7,8 @@ import {
     CheckList,
     type HagakiEditorToolbarButtonProps,
     InlineCode,
+    InsertImageDirectiveButton,
+    type InsertImageDirectiveButtonProps,
     InsertImageFileButton,
     type InsertImageFileButtonProps,
     InsertImageTrigger,
@@ -54,15 +56,21 @@ type ToolbarButton = ComponentType<any>;
  * - `InsertImage.Trigger` — just the button that opens the standard dialog
  * - `InsertImage.FileButton` — bypasses the dialog and opens a file picker
  *   directly, then hands the file off to `onImageUpload`.
+ * - `InsertImage.DirectiveButton` — file picker for the directive-based
+ *   image flow: hands the file to `onInsertImage` and inserts an
+ *   `::img{id="…"}` directive (requires `imagePreviewUrlFor` on the editor
+ *   for inline rendering).
  */
 type InsertImageComponent = ToolbarButton & {
     Trigger: ComponentType<HagakiEditorToolbarButtonProps>;
     FileButton: ComponentType<InsertImageFileButtonProps>;
+    DirectiveButton: ComponentType<InsertImageDirectiveButtonProps>;
 };
 
 const InsertImage = Object.assign(InsertImageRoot, {
     Trigger: InsertImageTrigger,
     FileButton: InsertImageFileButton,
+    DirectiveButton: InsertImageDirectiveButton,
 }) as InsertImageComponent;
 
 type HagakiEditorComponent = ComponentType<HagakiEditorRootProps> & {
@@ -157,10 +165,17 @@ export type {
 } from "@mdxeditor/editor";
 export type {
     HagakiEditorToolbarButtonProps,
+    InsertImageDirectiveButtonProps,
     InsertImageFileButtonProps,
 } from "./buttons.js";
 export type { HagakiEditorContentProps } from "./Content.js";
 export type { HagakiEditorProps, HagakiEditorRootProps } from "./Editor.js";
+export {
+    createImageDirectiveDescriptor,
+    type ImageDirectiveConfig,
+    ImageDirectiveContext,
+    type ImageDirectiveContextValue,
+} from "./image-directive.js";
 export {
     type DefaultPluginsOptions,
     defaultPlugins,
