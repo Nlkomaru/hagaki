@@ -26,7 +26,6 @@
         // "HAGAKI_GITHUB_OWNER": "your-org",
         // "HAGAKI_GITHUB_REPO": "your-content-repo",
         // "HAGAKI_GITHUB_BRANCH": "main",
-        // "HAGAKI_GITHUB_CONTENT_PATH": "content/wiki",
         // "HAGAKI_CDN_BASE_URL": "https://content-hagaki.<subdomain>.workers.dev"
     },
     // 編集中の画像を一時保存する R2 バケット。デプロイ前に

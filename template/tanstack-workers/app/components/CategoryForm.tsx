@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import type { WikiCategory } from "hagaki";
+import type { Category } from "hagaki";
 import { toUrlSlug } from "hagaki";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
@@ -11,7 +11,7 @@ import { cn } from "~/lib/utils";
 import { commitCategoryFn } from "../lib/category-server";
 
 export interface CategoryFormProps {
-    initial: WikiCategory;
+    initial: Category;
     /** New categories derive their slug from the title; existing ones are
      *  pinned (the slug is the `categories/<slug>.json` file identity). */
     slugLocked: boolean;
@@ -25,14 +25,14 @@ export function CategoryForm({
     existingSlugs = [],
 }: CategoryFormProps) {
     const router = useRouter();
-    const [category, setCategory] = useState<WikiCategory>(initial);
+    const [category, setCategory] = useState<Category>(initial);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const slug = slugLocked ? category.slug : toUrlSlug(category.title);
     const slugTaken =
         !slugLocked && slug.length > 0 && existingSlugs.includes(slug);
-    const update = (patch: Partial<WikiCategory>) =>
+    const update = (patch: Partial<Category>) =>
         setCategory((c) => ({ ...c, ...patch }));
 
     async function onSave() {

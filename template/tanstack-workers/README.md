@@ -40,7 +40,6 @@ TanStack Start + Cloudflare Workers + [hagaki](../../) を使ったフロント
    HAGAKI_CDN_BASE_URL=https://content-hagaki.<your-subdomain>.workers.dev
    # 任意
    HAGAKI_GITHUB_BRANCH=main
-   HAGAKI_GITHUB_CONTENT_PATH=content/article
    ```
 
    - **`.env`** はビルド時 (`vite build` / `wrangler deploy`) に拾われる
@@ -65,7 +64,7 @@ TanStack Start + Cloudflare Workers + [hagaki](../../) を使ったフロント
    pnpm exec wrangler secret put HAGAKI_GITHUB_OWNER
    pnpm exec wrangler secret put HAGAKI_GITHUB_REPO
    pnpm exec wrangler secret put HAGAKI_CDN_BASE_URL
-   # 任意: HAGAKI_GITHUB_BRANCH, HAGAKI_GITHUB_CONTENT_PATH
+   # 任意: HAGAKI_GITHUB_BRANCH
    ```
 
    非機密の値であれば `wrangler.jsonc` の `vars` に書いてもよい。

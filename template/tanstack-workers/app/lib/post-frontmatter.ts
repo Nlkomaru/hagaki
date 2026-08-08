@@ -1,5 +1,4 @@
-import type { WikiPostDetail } from "hagaki";
-import { toUrlSlug } from "hagaki";
+import type { PostDetail } from "hagaki";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -8,29 +7,19 @@ import { v4 as uuidv4 } from "uuid";
  * (`?uuid=`) so saving twice — once before the CDN manifest catches up — still
  * targets the same `content/article/<uuid>/index.md` instead of creating a
  * duplicate directory for the same slug.
+ *
+ * `date` is left empty on purpose: hagaki's `postFrontmatter` stamps today's
+ * date at save time, so an abandoned draft never carries a date it didn't earn.
  */
-export function emptyPost(slug: string, knownUuid?: string): WikiPostDetail {
+export function emptyPost(slug: string, knownUuid?: string): PostDetail {
     return {
         title: "",
         slug,
         uuid: knownUuid || uuidv4(),
         description: "",
-        date: new Date().toISOString().slice(0, 10),
+        date: "",
         category: "",
         image: "",
         body: "",
-    };
-}
-
-export function postFrontmatter(post: WikiPostDetail) {
-    return {
-        title: post.title,
-        slug: post.slug,
-        uuid: post.uuid,
-        // The editor's category field is free-text; pin it to a slug so it
-        // always matches a `content/categories/<slug>.json` entry.
-        category: post.category ? toUrlSlug(post.category) : "",
-        description: post.description,
-        image: post.image || "",
     };
 }

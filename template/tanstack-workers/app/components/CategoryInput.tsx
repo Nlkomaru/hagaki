@@ -1,11 +1,11 @@
-import type { WikiCategory } from "hagaki";
+import type { Category } from "hagaki";
 import { useId } from "react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 
 export interface CategoryInputProps {
     value: string;
-    categories: WikiCategory[];
+    categories: Category[];
     onChange: (slug: string) => void;
 }
 

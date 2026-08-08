@@ -30,9 +30,9 @@
             "types": "./dist/pending-images.d.ts",
             "import": "./dist/pending-images.js"
         },
-        "./auth/better-auth": {
-            "types": "./dist/auth/better-auth.d.ts",
-            "import": "./dist/auth/better-auth.js"
+        "./auth": {
+            "types": "./dist/auth.d.ts",
+            "import": "./dist/auth.js"
         }
     },
     "scripts": {

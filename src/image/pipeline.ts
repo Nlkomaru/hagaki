@@ -4,7 +4,6 @@
  *      (4x4 components) — fast, so the editor can show a placeholder early
  *   2. `encodeAnalyzedImage`: bitmap → resize → AVIF encode (WASM via
  *      @jsquash/avif) — slow, runs in the background
- * `processImage` chains both for callers that want the one-shot result.
  *
  * Relies on `createImageBitmap`, `OffscreenCanvas`/`HTMLCanvasElement`, and
  * the AVIF WASM module — none of which exist in Cloudflare Workers SSR, so
@@ -22,15 +21,6 @@ const BLURHASH_X_COMPONENTS = 4;
 const BLURHASH_Y_COMPONENTS = 4;
 
 export const MAX_AVIF_BYTES = 500 * 1024;
-
-export interface ProcessedImage {
-    avif: Uint8Array;
-    blurhash: string;
-    width: number;
-    height: number;
-    originalName: string;
-    originalType: string;
-}
 
 export class ImageProcessingError extends Error {
     constructor(
@@ -136,22 +126,6 @@ export async function encodeAnalyzedImage(
     } finally {
         analyzed.bitmap.close?.();
     }
-}
-
-export async function processImage(
-    file: File,
-    options?: ProcessImageOptions,
-): Promise<ProcessedImage> {
-    const analyzed = await analyzeImage(file, options);
-    const avif = await encodeAnalyzedImage(analyzed, options);
-    return {
-        avif,
-        blurhash: analyzed.blurhash,
-        width: analyzed.width,
-        height: analyzed.height,
-        originalName: analyzed.originalName,
-        originalType: analyzed.originalType,
-    };
 }
 
 async function loadBitmap(file: File): Promise<ImageBitmap> {

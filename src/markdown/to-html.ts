@@ -4,8 +4,6 @@ import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
-import { resolveCdnUrl } from "../api/url.js";
-import { decodeImageTitle } from "../image/title.js";
 import { blurhashToDataUrl } from "./blurhash-data-url.js";
 import {
     IMAGE_DIRECTIVE_NAME,
@@ -19,19 +17,6 @@ interface HastNode {
     children?: HastNode[];
 }
 
-function collect(
-    node: HastNode | undefined,
-    tagName: string,
-    out: HastNode[],
-): void {
-    if (!node) return;
-    // Skip subtrees already expanded by the `::img` directive plugin — their
-    // inner `<img>`s must not be re-wrapped by the legacy hydration pass.
-    if (node.properties && "data-hagaki-img" in node.properties) return;
-    if (node.type === "element" && node.tagName === tagName) out.push(node);
-    if (node.children) for (const c of node.children) collect(c, tagName, out);
-}
-
 type StyleValue = string | number | false | null | undefined;
 
 function styleToString(style: Record<string, StyleValue>): string {
@@ -42,12 +27,6 @@ function styleToString(style: Record<string, StyleValue>): string {
         })
         .map(([property, value]) => `${property}:${value}`)
         .join(";");
-}
-
-export interface HydrateImagesOptions {
-    cdnBaseUrl: string;
-    /** Wrapper border-radius, in any CSS length. Defaults to `0.5rem`. */
-    borderRadius?: string;
 }
 
 interface ImageSpanInput {
@@ -72,9 +51,8 @@ interface ImageSpanInput {
  *      effect, no client-side module — so the transition runs without
  *      shipping any extra JS.
  *
- * The wrapper reserves the right box via `aspect-ratio`. Used by both the
- * legacy `![alt](url "blurhash=...")` hydration pass and the `::img`
- * directive renderer so the two forms look identical.
+ * The wrapper reserves the right box via `aspect-ratio`. Used by the `::img`
+ * directive renderer.
  */
 function buildImageSpan(input: ImageSpanInput): {
     properties: Record<string, unknown>;
@@ -161,42 +139,6 @@ function buildImageSpan(input: ImageSpanInput): {
     };
 }
 
-/**
- * rehype plugin that rewrites every `<img>` produced from legacy markdown
- * (`![alt](url "blurhash=..&w=..&h=..")`) into the shared
- * `<span data-hagaki-img>` wrapper (see {@link buildImageSpan}). The actual
- * `src` is resolved against the configured CDN base.
- */
-function rehypeHydrateImages(options: HydrateImagesOptions) {
-    const borderRadius = options.borderRadius ?? "0.5rem";
-    return (tree: HastNode) => {
-        // Collect every `<img>` up front; we mutate each one into a wrapping
-        // `<span>` that contains fresh child nodes, so a live recursive walk
-        // would re-enter the freshly-inserted children and loop forever.
-        const imgs: HastNode[] = [];
-        collect(tree, "img", imgs);
-        for (const img of imgs) {
-            const props = img.properties ?? {};
-            const src = typeof props.src === "string" ? props.src : "";
-            const alt = typeof props.alt === "string" ? props.alt : "";
-            const title =
-                typeof props.title === "string" ? props.title : undefined;
-            const meta = decodeImageTitle(title);
-            const built = buildImageSpan({
-                src: resolveCdnUrl(src, options.cdnBaseUrl),
-                alt,
-                blurhash: meta.blurhash,
-                width: meta.width,
-                height: meta.height,
-                borderRadius,
-            });
-            img.tagName = "span";
-            img.properties = built.properties;
-            img.children = built.children;
-        }
-    };
-}
-
 interface MdastNode {
     type: string;
     name?: string;
@@ -217,8 +159,8 @@ function visitMdast(node: MdastNode, fn: (node: MdastNode) => void): void {
 
 /**
  * remark plugin that expands `::img{id="..." blurhash="..." w=".." h=".."
- * alt=".."}` leaf directives into the same `<span data-hagaki-img>`
- * structure as {@link rehypeHydrateImages}, via mdast `data.hName` /
+ * alt=".."}` leaf directives into the shared `<span data-hagaki-img>`
+ * structure (see {@link buildImageSpan}), via mdast `data.hName` /
  * `hProperties` / `hChildren` so `remark-rehype` emits it directly.
  *
  * Only `img` leaf directives are touched; every other directive (admonitions
@@ -316,16 +258,17 @@ const processor = (options: MarkdownToHtmlOptions) =>
         .use(remarkImageDirectives, options)
         .use(remarkRestoreUnknownDirectives)
         .use(remarkRehype)
-        .use(rehypeHydrateImages, options)
         .use(rehypeStringify);
 
-export interface MarkdownToHtmlOptions extends HydrateImagesOptions {
+export interface MarkdownToHtmlOptions {
     /**
      * Resolve a `::img` directive id to its display URL (e.g. the CDN URL of
      * the committed `<id>.avif`). When omitted, directives render with an
      * empty `src` — read-only pages should always pass this.
      */
     imageUrlFor?: (id: string) => string;
+    /** Wrapper border-radius, in any CSS length. Defaults to `0.5rem`. */
+    borderRadius?: string;
 }
 
 /**

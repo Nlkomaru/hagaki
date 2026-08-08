@@ -11,8 +11,6 @@ export interface EditorProps {
     onInsertImage?: (file: File) => Promise<ImageDirectiveAttrs>;
     /** 新フロー: `::img` directive の id → 表示 URL（pending か CDN） */
     imagePreviewUrlFor?: (id: string) => string;
-    /** 旧形式 `![alt](url)` 画像の表示 URL 解決（後方互換） */
-    onImagePreview?: (src: string) => Promise<string>;
 }
 
 /**
@@ -28,7 +26,6 @@ export function Editor(props: EditorProps) {
                 onChange={props.onChange}
                 onInsertImage={props.onInsertImage}
                 imagePreviewUrlFor={props.imagePreviewUrlFor}
-                onImagePreview={props.onImagePreview}
                 i18n={editorI18n}
                 className="bg-card text-foreground [&_[role=dialog]]:bg-card [&_[role=dialog]]:border [&_[role=dialog]]:border-border [&_[role=dialog]]:rounded-lg [&_[role=dialog]]:p-6 [&_[role=dialog]]:text-foreground [&_[role=dialog]_label]:text-sm [&_[role=dialog]_label]:font-medium [&_[role=dialog]_label]:text-muted-foreground [&_[role=dialog]_input[type=text]]:rounded-md [&_[role=dialog]_input[type=text]]:border [&_[role=dialog]_input[type=text]]:border-input [&_[role=dialog]_input[type=text]]:bg-background [&_[role=dialog]_input[type=text]]:px-3 [&_[role=dialog]_input[type=text]]:py-1.5 [&_[role=dialog]_input[type=text]]:text-sm"
             >

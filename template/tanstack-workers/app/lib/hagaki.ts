@@ -10,7 +10,6 @@ let cached: HagakiClient | null = null;
  * - HAGAKI_GITHUB_OWNER
  * - HAGAKI_GITHUB_REPO
  * - HAGAKI_GITHUB_BRANCH (optional, default "main")
- * - HAGAKI_GITHUB_CONTENT_PATH (optional, default "content/article")
  * - HAGAKI_GITHUB_TOKEN (Cloudflare Secrets Store binding, async — see getHagakiClient)
  * - HAGAKI_CDN_BASE_URL
  */
@@ -31,8 +30,6 @@ export async function getHagakiClient(): Promise<HagakiClient> {
             owner,
             repo,
             branch: readEnv("HAGAKI_GITHUB_BRANCH") ?? "main",
-            contentPath:
-                readEnv("HAGAKI_GITHUB_CONTENT_PATH") ?? "content/article",
             auth: token,
         },
         content: { cdnBaseUrl },

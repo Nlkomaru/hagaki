@@ -7,18 +7,14 @@ import { Button } from "~/components/ui/button";
 import { Separator } from "~/components/ui/separator";
 import { getHagakiClient } from "../lib/hagaki";
 import { imageUrl } from "../lib/post-editor-images";
-import { getStringEnv } from "../lib/server-env";
 
 const getRenderedPostFn = createServerFn({ method: "GET" })
     .inputValidator((slug: string) => slug)
     .handler(async ({ data: slug }) => {
-        const { env } = await import("cloudflare:workers");
         const client = await getHagakiClient();
         const post = await client.posts.getBySlug(slug);
         if (!post) return null;
-        const cdnBaseUrl = getStringEnv(env, "HAGAKI_CDN_BASE_URL");
         const html = await markdownToHtml(post.body, {
-            cdnBaseUrl,
             // `::img` directive の id をアプリの画像ルートに解決する。
             // CDN(コミット済み) / R2(pending) の出し分けはルート側が自動で
             // 行うので、コミット直後の CDN 反映ラグ中も画像が表示される。
