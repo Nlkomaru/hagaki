@@ -1,0 +1,127 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - complementary [ref=f4e4]:
+      - link [ref=f4e5] [cursor=pointer]:
+        - /url: /
+        - img "もりのパーティWikiのロゴ" [ref=f4e6]
+      - generic [ref=f4e7]:
+        - searchbox [ref=f4e14]
+        - navigation [ref=f4e15]:
+          - list [ref=f4e16]:
+            - listitem [ref=f4e17]:
+              - link "トップページ" [ref=f4e18] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=f4e22]:
+              - link "カテゴリ一覧" [ref=f4e23] [cursor=pointer]:
+                - /url: /category
+            - listitem [ref=f4e27]:
+              - list [ref=f4e28]:
+                - listitem [ref=f4e29]:
+                  - link "建築紹介" [ref=f4e30] [cursor=pointer]:
+                    - /url: /category/architecture
+                - listitem [ref=f4e31]:
+                  - link "街と村" [ref=f4e32] [cursor=pointer]:
+                    - /url: /category/city
+                - listitem [ref=f4e33]:
+                  - link "イベント" [ref=f4e34] [cursor=pointer]:
+                    - /url: /category/event
+                - listitem [ref=f4e35]:
+                  - link "お店の紹介" [ref=f4e36] [cursor=pointer]:
+                    - /url: /category/store
+                - listitem [ref=f4e37]:
+                  - link "もりぱマガジン" [ref=f4e38] [cursor=pointer]:
+                    - /url: /category/magazine
+                - listitem [ref=f4e39]:
+                  - link "MOD・プラグイン" [ref=f4e40] [cursor=pointer]:
+                    - /url: /category/plugins
+                - listitem [ref=f4e41]:
+                  - link "投稿" [ref=f4e42] [cursor=pointer]:
+                    - /url: /category/post
+                - listitem [ref=f4e43]:
+                  - link "観光案内" [ref=f4e44] [cursor=pointer]:
+                    - /url: /category/tourism
+                - listitem [ref=f4e45]:
+                  - link "チュートリアル" [ref=f4e46] [cursor=pointer]:
+                    - /url: /category/tutorial
+                - listitem [ref=f4e47]:
+                  - link "アーカイブ" [ref=f4e48] [cursor=pointer]:
+                    - /url: /category/zarchive
+        - generic [ref=f4e50]:
+          - generic [ref=f4e51]:
+            - generic [ref=f4e52]: ログインしてWikiを始めましょう！
+            - generic [ref=f4e53]: もりぱアカウントにログインすると、Wikiへ書き込んだり、新しいページを作ったりできます。早速初めてみましょう！
+          - link "ログイン" [ref=f4e55] [cursor=pointer]:
+            - /url: /auth/sign-in
+    - generic [ref=f4e56]:
+      - generic [ref=f4e58]:
+        - banner [ref=f4e59]:
+          - img "チャットについて！日本語入力の仕方など" [ref=f4e61]
+          - generic [ref=f4e62]:
+            - paragraph [ref=f4e63]:
+              - link "アーカイブ" [ref=f4e67] [cursor=pointer]:
+                - /url: /category/zarchive
+            - heading "チャットについて！日本語入力の仕方など" [level=1] [ref=f4e68]
+            - paragraph [ref=f4e69]: 森パのゲーム内チャットについての説明です！
+        - main [ref=f4e70]:
+          - heading "チャットについて！" [level=1] [ref=f4e71]
+          - paragraph [ref=f4e72]: このページでは森パ内でのチャットの仕方について書いていきます！
+          - heading "チャットとは？" [level=2] [ref=f4e73]
+          - paragraph [ref=f4e74]:
+            - text: 知らない方も少ないと思いますが一応説明しておきます ゲーム内で
+            - strong [ref=f4e75]: T
+            - text: を押すとチャット画面が開き↓のようにチャットする事ができます ここでサーバー内の方々と会話をする事ができます！
+          - heading "日本語入力" [level=2] [ref=f4e76]
+          - paragraph [ref=f4e77]:
+            - text: これが初心者の方が一番困るところだと思います！ 他のゲームやマイクラで普通のワールドをマルチプレイする時などは普通にチャットに日本語を打つだけでできますが、
+            - strong [ref=f4e78]: サーバーは普通に打つだけではできません!
+            - strong [ref=f4e79]: このサーバーの日本語入力の仕方は日本語で文字を打った後に英語変換キーを押すことでできます
+            - strong [ref=f4e80]: 日本語で文字を打っているときは文字が打たれてないように見えますが大丈夫です
+            - text: 実際にやってみるとこんな感じ
+          - img "書いているけど見えない！" [ref=f4e83]
+          - img "でも変換キーを押すと出てくる！" [ref=f4e86]
+          - paragraph [ref=f4e87]: こうすることで日本語入力ができます！
+          - heading "その他の機能について！" [level=2] [ref=f4e88]
+          - heading "Discordチャンネル" [level=3] [ref=f4e89]
+          - paragraph [ref=f4e90]: マイクラのチャット内でDiscordで話している人と会話したりする時に使うのがDiscordチャンネルです Discordチャンネルに入るには**/ch d**と打つことでDiscordチャンネルに入ることができます
+          - paragraph [ref=f4e91]: Discordにも聞き専チャンネルがありますがそれと同じ役割です Discordチャンネル意外のところにボイスチャットの返信などを書くと迷惑になる事があるのでDiscordチャンネルや聞き専に書きましょう！
+        - generic [ref=f4e94]:
+          - heading "もりのパーティで、 あなたを待っています" [level=2] [ref=f4e95]: もりのパーティで、あなたを待っています
+          - paragraph [ref=f4e96]: のんびり、ゆったり、気ままに、あそべる Minecraftサーバー「もりのパーティ」に参加してみませんか?
+          - link "ちょっと入ってみる" [ref=f4e97] [cursor=pointer]:
+            - /url: https://morino.party/
+        - navigation [ref=f4e99]:
+          - link "このページを編集" [ref=f4e100] [cursor=pointer]:
+            - /url: /dashboard/posts/chat
+      - contentinfo [ref=f4e105]:
+        - generic [ref=f4e106]:
+          - link [ref=f4e107] [cursor=pointer]:
+            - /url: /
+            - img "MorinoParty" [ref=f4e108]
+          - paragraph [ref=f4e109]: もりのパーティ公式Wiki もりぱうぃき!
+        - list [ref=f4e110]:
+          - listitem [ref=f4e111]:
+            - link "カテゴリ一覧" [ref=f4e112] [cursor=pointer]:
+              - /url: /category
+          - listitem [ref=f4e113]:
+            - link "Wiki投稿ガイド" [ref=f4e114] [cursor=pointer]:
+              - /url: /guide
+          - listitem [ref=f4e115]:
+            - link "マークダウン記法について" [ref=f4e116] [cursor=pointer]:
+              - /url: /guide
+        - list [ref=f4e117]:
+          - listitem [ref=f4e118]:
+            - link "もりのパーティ Webサイト" [ref=f4e119] [cursor=pointer]:
+              - /url: https://morino.party/
+          - listitem [ref=f4e123]:
+            - link "はじめての方へ" [ref=f4e124] [cursor=pointer]:
+              - /url: https://morino.party/first
+          - listitem [ref=f4e128]:
+            - link "行動規約" [ref=f4e129] [cursor=pointer]:
+              - /url: https://morino.party/guideline
+        - list [ref=f4e133]:
+          - link "オープンソースライセンス" [ref=f4e134] [cursor=pointer]:
+            - /url: /license
+        - paragraph [ref=f4e135]: © morino.party"Minecraft" is a trademark of Mojang Synergies AB
+  - alert [ref=f4e136]
+  - button "Open Next.js Dev Tools" [ref=f4e142] [cursor=pointer]
+  - region "Notifications, bottom-end (alt+T)"

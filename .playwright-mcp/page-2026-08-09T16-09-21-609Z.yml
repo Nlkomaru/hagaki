@@ -1,0 +1,101 @@
+- generic [ref=f11e2]:
+  - complementary [ref=f11e4]:
+    - link [ref=f11e5] [cursor=pointer]:
+      - /url: /
+      - img "もりのパーティWikiのロゴ" [ref=f11e6]
+    - generic [ref=f11e7]:
+      - searchbox [ref=f11e14]
+      - navigation [ref=f11e15]:
+        - list [ref=f11e16]:
+          - listitem [ref=f11e17]:
+            - link "トップページ" [ref=f11e18] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=f11e22]:
+            - link "カテゴリ一覧" [ref=f11e23] [cursor=pointer]:
+              - /url: /category
+          - listitem [ref=f11e27]:
+            - list [ref=f11e28]:
+              - listitem [ref=f11e29]:
+                - link "建築紹介" [ref=f11e30] [cursor=pointer]:
+                  - /url: /category/architecture
+              - listitem [ref=f11e31]:
+                - link "街と村" [ref=f11e32] [cursor=pointer]:
+                  - /url: /category/city
+              - listitem [ref=f11e33]:
+                - link "イベント" [ref=f11e34] [cursor=pointer]:
+                  - /url: /category/event
+              - listitem [ref=f11e35]:
+                - link "お店の紹介" [ref=f11e36] [cursor=pointer]:
+                  - /url: /category/store
+              - listitem [ref=f11e37]:
+                - link "もりぱマガジン" [ref=f11e38] [cursor=pointer]:
+                  - /url: /category/magazine
+              - listitem [ref=f11e39]:
+                - link "MOD・プラグイン" [ref=f11e40] [cursor=pointer]:
+                  - /url: /category/plugins
+              - listitem [ref=f11e41]:
+                - link "投稿" [ref=f11e42] [cursor=pointer]:
+                  - /url: /category/post
+              - listitem [ref=f11e43]:
+                - link "観光案内" [ref=f11e44] [cursor=pointer]:
+                  - /url: /category/tourism
+              - listitem [ref=f11e45]:
+                - link "チュートリアル" [ref=f11e46] [cursor=pointer]:
+                  - /url: /category/tutorial
+              - listitem [ref=f11e47]:
+                - link "アーカイブ" [ref=f11e48] [cursor=pointer]:
+                  - /url: /category/zarchive
+      - generic [ref=f11e50]:
+        - generic [ref=f11e51]:
+          - generic [ref=f11e52]: ログインしてWikiを始めましょう！
+          - generic [ref=f11e53]: もりぱアカウントにログインすると、Wikiへ書き込んだり、新しいページを作ったりできます。早速初めてみましょう！
+        - link "ログイン" [ref=f11e55] [cursor=pointer]:
+          - /url: /auth/sign-in
+  - generic [ref=f11e56]:
+    - generic [ref=f11e57]:
+      - region "Notifications, bottom-end (alt+T)"
+      - generic [ref=f11e58]:
+        - navigation [ref=f11e59]:
+          - link "戻る" [ref=f11e61] [cursor=pointer]:
+            - /url: /dashboard
+          - heading "ページの編集" [level=2] [ref=f11e65]
+          - button "保存" [disabled] [ref=f11e67]
+        - banner [ref=f11e68]:
+          - generic [ref=f11e69]:
+            - generic [ref=f11e70]:
+              - button "カテゴリ" [ref=f11e71] [cursor=pointer]
+              - button [ref=f11e75] [cursor=pointer]:
+                - img "カバー画像アイコン" [ref=f11e76]
+                - text: カバー画像を追加
+            - generic "edit" [ref=f11e82]: test
+            - generic "edit" [ref=f11e85]: 説明
+    - contentinfo [ref=f11e86]:
+      - generic [ref=f11e87]:
+        - link [ref=f11e88] [cursor=pointer]:
+          - /url: /
+          - img "MorinoParty" [ref=f11e89]
+        - paragraph [ref=f11e90]: もりのパーティ公式Wiki もりぱうぃき!
+      - list [ref=f11e91]:
+        - listitem [ref=f11e92]:
+          - link "カテゴリ一覧" [ref=f11e93] [cursor=pointer]:
+            - /url: /category
+        - listitem [ref=f11e94]:
+          - link "Wiki投稿ガイド" [ref=f11e95] [cursor=pointer]:
+            - /url: /guide
+        - listitem [ref=f11e96]:
+          - link "マークダウン記法について" [ref=f11e97] [cursor=pointer]:
+            - /url: /guide
+      - list [ref=f11e98]:
+        - listitem [ref=f11e99]:
+          - link "もりのパーティ Webサイト" [ref=f11e100] [cursor=pointer]:
+            - /url: https://morino.party/
+        - listitem [ref=f11e104]:
+          - link "はじめての方へ" [ref=f11e105] [cursor=pointer]:
+            - /url: https://morino.party/first
+        - listitem [ref=f11e109]:
+          - link "行動規約" [ref=f11e110] [cursor=pointer]:
+            - /url: https://morino.party/guideline
+      - list [ref=f11e114]:
+        - link "オープンソースライセンス" [ref=f11e115] [cursor=pointer]:
+          - /url: /license
+      - paragraph [ref=f11e116]: © morino.party"Minecraft" is a trademark of Mojang Synergies AB
