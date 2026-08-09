@@ -79,6 +79,50 @@ export function MyEditor({ markdown, onChange }: { markdown: string; onChange: (
 
 Next.js では `dynamic(() => import("./MyEditor"), { ssr: false })` で読み込むこと（MDXEditor は client only）。
 
+## Client API
+
+`createHagakiClient` が返す client の全体像。読み取りは「配信済み (CDN)」と
+「リポジトリ (GitHub)」の 2 系統がある — 一覧や公開ページは CDN、エディタの
+ように**まだデプロイされていないコミットを見たい**ところはリポジトリを読む。
+
+| API | 読み先 | 内容 |
+|---|---|---|
+| `posts.list(options?)` | CDN | `article.json` の記事一覧。`sortBy: created \| updated \| title` |
+| `posts.getBySlug(slug)` | CDN | `slug-index.json` で uuid を引いて本文 + `info.json` |
+| `posts.getByUuid(uuid)` | CDN | 同上 (uuid 直指定) |
+| `posts.getFromRepo(uuid, { ref })` | GitHub | リポジトリ上の `index.mdx`。`ref` で過去リビジョン |
+| `posts.existsInRepo(uuid)` | GitHub | 記事本体の有無 |
+| `posts.repoPaths(uuid)` | GitHub | 記事ディレクトリ配下の全パス (削除時に `deletePaths` へ渡す) |
+| `posts.history(uuid, { perPage })` | GitHub | `index.mdx` に触れたコミット (新しい順) |
+| `posts.diff(uuid, base, head)` | GitHub | 2 コミット間の本文の unified diff |
+| `posts.save(post, options?)` | GitHub | frontmatter + 本文を 1 コミットで保存 |
+| `categories.list()` | CDN | `categories.json` |
+| `files.get(path, ref?)` | GitHub | 任意ファイルの内容 (UTF-8) |
+| `files.exists(path, ref?)` | GitHub | 存在確認 |
+| `files.list(path, ref?)` | GitHub | ディレクトリ 1 階層 |
+| `files.listRecursive(path, ref?)` | GitHub | 配下の全ファイルパス |
+| `commits.commitFiles(input)` | GitHub | 複数ファイル (追加/更新/削除) を 1 コミットに |
+| `commits.getWithChecks(sha)` | GitHub | コミットと check runs |
+
+```ts
+// エディタ: 配信より新しいリポジトリの状態を読む
+const draft = await hagaki.posts.getFromRepo(uuid);
+
+// 履歴と差分
+const [latest, previous] = await hagaki.posts.history(uuid, { perPage: 2 });
+const patch = await hagaki.posts.diff(uuid, previous.sha, latest.sha);
+
+// 記事を assets ごと削除する
+await hagaki.commits.commitFiles({
+  deletePaths: await hagaki.posts.repoPaths(uuid),
+  commitMessage: "🔥 Delete post",
+});
+```
+
+認証・権限・下書き状態といったアプリ固有の概念は hagaki は持たない。
+コミットの著者だけ `Committer` (`hagaki/auth/better-auth` の
+`committerFromBetterAuth`) で渡す。
+
 ## Markdown 機能
 
 `defaultPlugins()` で有効になっているもの / 未対応のものの一覧。
