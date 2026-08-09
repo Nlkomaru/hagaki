@@ -15,10 +15,13 @@ export type {
 export type {
     CommitWithChecks,
     GetAllPostsOptions,
+    ImportedEdit,
     SaveResult,
     WikiCategory,
+    WikiHistoryEntry,
     WikiPost,
     WikiPostDetail,
+    WikiThumbnail,
 } from "./api/types.js";
 export { resolveCdnUrl } from "./api/url.js";
 
