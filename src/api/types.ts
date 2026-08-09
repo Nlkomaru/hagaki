@@ -57,11 +57,31 @@ export interface GetAllPostsOptions {
     order?: "asc" | "desc";
 }
 
+/**
+ * An external page a category wants to show alongside its posts — a map, a
+ * dashboard, a live view. Deliberately just a URL: hagaki does not know what
+ * the page is, and the consuming site decides how (and whether) to render it.
+ * Layout is the site's concern, so no sizing lives here.
+ */
+export interface CategoryEmbed {
+    /** Full URL to load in the frame, query string included. */
+    url: string;
+    /** Accessible name for the frame. */
+    title?: string;
+}
+
 export interface WikiCategory {
     title: string;
     slug: string;
     body: string;
+    /**
+     * Whether posts in this category carry coordinates (`x` / `y`). Used to
+     * decide if the editor must ask for them. Independent of {@link embed} —
+     * a category can have coordinates without an embed, and vice versa.
+     */
     hasPosition: boolean;
+    /** Optional page to embed on the category view. */
+    embed?: CategoryEmbed;
 }
 
 export interface SaveResult {
