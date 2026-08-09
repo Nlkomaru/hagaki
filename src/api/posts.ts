@@ -1,6 +1,7 @@
 import matter from "gray-matter";
 import type { Octokit } from "octokit";
 import type { Committer } from "../auth/index.js";
+import { type CommitFile, commitFiles } from "./tree-commit.js";
 import type { SaveResult, WikiPostDetail } from "./types.js";
 
 export interface GitHubRepoConfig {
@@ -17,6 +18,15 @@ export interface GitHubRepoConfig {
 export interface SavePostOptions {
     committer?: Committer;
     commitMessage?: string;
+    /**
+     * Extra files to write in the same commit — typically the images the
+     * editor uploaded while the post was being written. Supplying these (or
+     * {@link deletePaths}) switches the save to a tree commit so the post and
+     * its assets land together instead of in separate commits.
+     */
+    files?: CommitFile[];
+    /** Repository paths to remove in the same commit. */
+    deletePaths?: string[];
 }
 
 export interface SavePostDeps {
@@ -61,6 +71,35 @@ export async function savePost(
             ? { modified: form.modified }
             : {}),
     });
+
+    // Assets to add or remove alongside the post can only be expressed as a
+    // tree commit; the contents API writes one path at a time.
+    const extraFiles = options?.files ?? [];
+    const deletePaths = options?.deletePaths ?? [];
+    if (extraFiles.length > 0 || deletePaths.length > 0) {
+        const result = await commitFiles(
+            {
+                octokit,
+                owner: repo.owner,
+                repo: repo.repo,
+                branch: repo.branch,
+            },
+            {
+                files: [...extraFiles, { path: filePath, content }],
+                deletePaths,
+                committer: options?.committer,
+                // gitmoji: 📝 = add/update content.
+                commitMessage:
+                    options?.commitMessage ?? `📝 Update post: ${form.slug}`,
+            },
+        );
+        return {
+            commitSha: result.commitSha,
+            commitUrl: result.commitUrl,
+            path: filePath,
+        };
+    }
+
     const contentEncoded = toBase64(content);
 
     let fileSha: string | undefined;
