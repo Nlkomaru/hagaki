@@ -117,32 +117,39 @@ MDX（Markdown + `<Image />` コンポーネントのみ）。hagaki 自身は�
 | `title` | string | 表示名 |
 | `slug` | string | ファイル名と一致 |
 | `body` | string | カテゴリの説明文 |
-| `hasPosition` | boolean | 記事が座標 (`x` / `y`) を持つかどうか |
-| `embed` | object? | カテゴリページに埋め込む外部ページ。任意 |
+| `option` | object? | 記事が持つ追加 frontmatter フィールドの宣言。任意 |
 
-`embed` は URL だけを持つ。何のページかは hagaki は関知せず、埋め込むかどうかと
-大きさは消費側サイトが決める。
+`option` は「このカテゴリの記事が何を追加で持つか」をキーごとに宣言する。
+値の意味は hagaki は関知せず、エディタが入力欄を描くのに必要な情報だけを持つ。
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `embed.url` | string | フレームに読み込む完全な URL（クエリ込み） |
-| `embed.title` | string? | フレームのアクセシブル名 |
+| `option.<key>.type` | `"string"` \| `"integer"` \| `"number"` \| `"boolean"` | 値の種類 |
+| `option.<key>.label` | string? | 入力欄のラベル。省略時はキー名 |
+| `option.<key>.description` | string? | 入力欄に添える説明 |
+| `option.<key>.placeholder` | string? | 未入力時のプレースホルダ |
+| `option.<key>.required` | boolean? | 記事が必ず持つ必要があるか |
 
-`hasPosition` と `embed` は独立している。座標を持つが埋め込みは無いカテゴリも、
-その逆もありうる。
+キーは記事の frontmatter に保存されるキーそのもの。
 
 ```json
 {
     "title": "General",
     "slug": "general",
     "body": "一般的な記事",
-    "hasPosition": true,
-    "embed": {
-        "url": "https://maps.example.com/?x=100&z=200",
-        "title": "General の地図"
+    "option": {
+        "x": {
+            "type": "integer",
+            "label": "X座標",
+            "description": "ワールド座標の X。地図で記事を探すのに使う",
+            "placeholder": "1000",
+            "required": true
+        }
     }
 }
 ```
+
+カテゴリの並び順は `slug` 昇順。順番を制御したい場合は slug で調整する。
 
 ## 生成物（GitHub Actions）
 

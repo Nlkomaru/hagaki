@@ -57,17 +57,29 @@ export interface GetAllPostsOptions {
     order?: "asc" | "desc";
 }
 
+/** Value kinds a {@link CategoryOptionField} can hold. */
+export type CategoryOptionFieldType =
+    | "string"
+    | "integer"
+    | "number"
+    | "boolean";
+
 /**
- * An external page a category wants to show alongside its posts — a map, a
- * dashboard, a live view. Deliberately just a URL: hagaki does not know what
- * the page is, and the consuming site decides how (and whether) to render it.
- * Layout is the site's concern, so no sizing lives here.
+ * One extra frontmatter field that posts in a category carry, described well
+ * enough for an editor to render an input for it without knowing what the
+ * field means. A wiki about places declares coordinates; one about releases
+ * declares a version — hagaki stays out of it either way.
  */
-export interface CategoryEmbed {
-    /** Full URL to load in the frame, query string included. */
-    url: string;
-    /** Accessible name for the frame. */
-    title?: string;
+export interface CategoryOptionField {
+    type: CategoryOptionFieldType;
+    /** Input label. Falls back to the field key. */
+    label?: string;
+    /** Help text shown alongside the input. */
+    description?: string;
+    /** Placeholder for an empty input. */
+    placeholder?: string;
+    /** Whether a post in this category must fill it in. */
+    required?: boolean;
 }
 
 export interface WikiCategory {
@@ -75,13 +87,11 @@ export interface WikiCategory {
     slug: string;
     body: string;
     /**
-     * Whether posts in this category carry coordinates (`x` / `y`). Used to
-     * decide if the editor must ask for them. Independent of {@link embed} —
-     * a category can have coordinates without an embed, and vice versa.
+     * Extra frontmatter fields posts in this category carry, keyed by the
+     * frontmatter key they are stored under. Categories whose posts carry
+     * nothing extra omit it.
      */
-    hasPosition: boolean;
-    /** Optional page to embed on the category view. */
-    embed?: CategoryEmbed;
+    option?: Record<string, CategoryOptionField>;
 }
 
 export interface SaveResult {

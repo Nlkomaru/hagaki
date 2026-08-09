@@ -55,9 +55,15 @@ function CategoriesIndexPage() {
                                         <Badge variant="outline">
                                             {category.slug}
                                         </Badge>
-                                        {category.hasPosition && (
+                                        {Object.keys(category.option ?? {})
+                                            .length > 0 && (
                                             <Badge variant="secondary">
-                                                pinned
+                                                option ×
+                                                {
+                                                    Object.keys(
+                                                        category.option ?? {},
+                                                    ).length
+                                                }
                                             </Badge>
                                         )}
                                     </div>

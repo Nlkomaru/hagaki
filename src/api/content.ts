@@ -210,9 +210,6 @@ export async function listCategories(
     const res = await deps.fetchImpl(url);
     if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status}`);
     const categories = (await res.json()) as WikiCategory[];
-    categories.sort((a, b) => {
-        if (a.hasPosition !== b.hasPosition) return a.hasPosition ? -1 : 1;
-        return a.slug.localeCompare(b.slug);
-    });
+    categories.sort((a, b) => a.slug.localeCompare(b.slug));
     return categories;
 }

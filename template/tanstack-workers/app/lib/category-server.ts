@@ -33,10 +33,9 @@ export const commitCategoryFn = createServerFn({ method: "POST" })
                 title: data.title,
                 slug: data.slug,
                 body: data.body,
-                hasPosition: data.hasPosition,
                 // Optional, so only write it back when set — otherwise every
-                // save would stamp `"embed": null` onto categories without one.
-                ...(data.embed ? { embed: data.embed } : {}),
+                // save would stamp `"option": null` onto plain categories.
+                ...(data.option ? { option: data.option } : {}),
             },
             null,
             4,
