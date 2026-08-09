@@ -2,5 +2,13 @@
     "title": "Food",
     "slug": "food",
     "body": "テスト用",
-    "hasPosition": true
+    "option": {
+        "x": {
+            "type": "integer",
+            "label": "X座標",
+            "description": "ワールド座標の X",
+            "placeholder": "1000",
+            "required": true
+        }
+    }
 }

@@ -57,11 +57,41 @@ export interface GetAllPostsOptions {
     order?: "asc" | "desc";
 }
 
+/** Value kinds a {@link CategoryOptionField} can hold. */
+export type CategoryOptionFieldType =
+    | "string"
+    | "integer"
+    | "number"
+    | "boolean";
+
+/**
+ * One extra frontmatter field that posts in a category carry, described well
+ * enough for an editor to render an input for it without knowing what the
+ * field means. A wiki about places declares coordinates; one about releases
+ * declares a version — hagaki stays out of it either way.
+ */
+export interface CategoryOptionField {
+    type: CategoryOptionFieldType;
+    /** Input label. Falls back to the field key. */
+    label?: string;
+    /** Help text shown alongside the input. */
+    description?: string;
+    /** Placeholder for an empty input. */
+    placeholder?: string;
+    /** Whether a post in this category must fill it in. */
+    required?: boolean;
+}
+
 export interface WikiCategory {
     title: string;
     slug: string;
     body: string;
-    hasPosition: boolean;
+    /**
+     * Extra frontmatter fields posts in this category carry, keyed by the
+     * frontmatter key they are stored under. Categories whose posts carry
+     * nothing extra omit it.
+     */
+    option?: Record<string, CategoryOptionField>;
 }
 
 export interface SaveResult {

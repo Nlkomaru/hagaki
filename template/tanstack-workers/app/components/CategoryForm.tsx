@@ -88,18 +88,6 @@ export function CategoryForm({
                             onChange={(e) => update({ body: e.target.value })}
                         />
                     </div>
-
-                    <label className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            className="size-4 accent-foreground"
-                            checked={category.hasPosition}
-                            onChange={(e) =>
-                                update({ hasPosition: e.target.checked })
-                            }
-                        />
-                        hasPosition（一覧で上位に固定）
-                    </label>
                 </CardContent>
             </Card>
 

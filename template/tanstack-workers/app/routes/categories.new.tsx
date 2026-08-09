@@ -13,7 +13,7 @@ function NewCategoryPage() {
         <CategoryForm
             slugLocked={false}
             existingSlugs={categories.map((c) => c.slug)}
-            initial={{ title: "", slug: "", body: "", hasPosition: false }}
+            initial={{ title: "", slug: "", body: "" }}
         />
     );
 }

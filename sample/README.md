@@ -117,16 +117,39 @@ MDX（Markdown + `<Image />` コンポーネントのみ）。hagaki 自身は�
 | `title` | string | 表示名 |
 | `slug` | string | ファイル名と一致 |
 | `body` | string | カテゴリの説明文 |
-| `hasPosition` | boolean | 位置情報を持つかどうか |
+| `option` | object? | 記事が持つ追加 frontmatter フィールドの宣言。任意 |
+
+`option` は「このカテゴリの記事が何を追加で持つか」をキーごとに宣言する。
+値の意味は hagaki は関知せず、エディタが入力欄を描くのに必要な情報だけを持つ。
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `option.<key>.type` | `"string"` \| `"integer"` \| `"number"` \| `"boolean"` | 値の種類 |
+| `option.<key>.label` | string? | 入力欄のラベル。省略時はキー名 |
+| `option.<key>.description` | string? | 入力欄に添える説明 |
+| `option.<key>.placeholder` | string? | 未入力時のプレースホルダ |
+| `option.<key>.required` | boolean? | 記事が必ず持つ必要があるか |
+
+キーは記事の frontmatter に保存されるキーそのもの。
 
 ```json
 {
     "title": "General",
     "slug": "general",
     "body": "一般的な記事",
-    "hasPosition": true
+    "option": {
+        "x": {
+            "type": "integer",
+            "label": "X座標",
+            "description": "ワールド座標の X。地図で記事を探すのに使う",
+            "placeholder": "1000",
+            "required": true
+        }
+    }
 }
 ```
+
+カテゴリの並び順は `slug` 昇順。順番を制御したい場合は slug で調整する。
 
 ## 生成物（GitHub Actions）
 

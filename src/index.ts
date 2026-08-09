@@ -14,6 +14,8 @@ export type {
     CommitFilesResult,
 } from "./api/tree-commit.js";
 export type {
+    CategoryOptionField,
+    CategoryOptionFieldType,
     CommitWithChecks,
     GetAllPostsOptions,
     ImportedEdit,
