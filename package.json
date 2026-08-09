@@ -59,6 +59,7 @@
     },
     "peerDependencies": {
         "@mdxeditor/editor": "^3",
+        "@mdxeditor/gurx": "^1.2.4",
         "react": ">=18",
         "react-dom": ">=18"
     },
@@ -76,7 +77,7 @@
     "devDependencies": {
         "@biomejs/biome": "2.3.9",
         "@mdxeditor/editor": "^3.32.3",
-        "@mdxeditor/gurx": "^1.1.0",
+        "@mdxeditor/gurx": "^1.2.4",
         "@types/node": "^20",
         "@types/react": "^19",
         "@types/react-dom": "^19",
