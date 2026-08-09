@@ -1,0 +1,189 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - complementary [ref=f1e4]:
+      - link [ref=f1e5] [cursor=pointer]:
+        - /url: /
+        - img "もりのパーティWikiのロゴ" [ref=f1e6]
+      - generic [ref=f1e7]:
+        - searchbox [ref=f1e14]
+        - navigation [ref=f1e16]:
+          - list [ref=f1e17]:
+            - listitem [ref=f1e18]:
+              - link "トップページ" [ref=f1e19] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=f1e23]:
+              - link "カテゴリ一覧" [ref=f1e24] [cursor=pointer]:
+                - /url: /category
+            - listitem [ref=f1e28]:
+              - list [ref=f1e29]:
+                - listitem [ref=f1e30]:
+                  - link "建築紹介" [ref=f1e31] [cursor=pointer]:
+                    - /url: /category/architecture
+                - listitem [ref=f1e32]:
+                  - link "街と村" [ref=f1e33] [cursor=pointer]:
+                    - /url: /category/city
+                - listitem [ref=f1e34]:
+                  - link "イベント" [ref=f1e35] [cursor=pointer]:
+                    - /url: /category/event
+                - listitem [ref=f1e36]:
+                  - link "お店の紹介" [ref=f1e37] [cursor=pointer]:
+                    - /url: /category/store
+                - listitem [ref=f1e38]:
+                  - link "もりぱマガジン" [ref=f1e39] [cursor=pointer]:
+                    - /url: /category/magazine
+                - listitem [ref=f1e40]:
+                  - link "MOD・プラグイン" [ref=f1e41] [cursor=pointer]:
+                    - /url: /category/plugins
+                - listitem [ref=f1e42]:
+                  - link "投稿" [ref=f1e43] [cursor=pointer]:
+                    - /url: /category/post
+                - listitem [ref=f1e44]:
+                  - link "観光案内" [ref=f1e45] [cursor=pointer]:
+                    - /url: /category/tourism
+                - listitem [ref=f1e46]:
+                  - link "チュートリアル" [ref=f1e47] [cursor=pointer]:
+                    - /url: /category/tutorial
+                - listitem [ref=f1e48]:
+                  - link "アーカイブ" [ref=f1e49] [cursor=pointer]:
+                    - /url: /category/zarchive
+        - generic [ref=f1e51]:
+          - generic [ref=f1e52]:
+            - generic [ref=f1e53]: ログインしてWikiを始めましょう！
+            - generic [ref=f1e54]: もりぱアカウントにログインすると、Wikiへ書き込んだり、新しいページを作ったりできます。早速初めてみましょう！
+          - link "ログイン" [ref=f1e56] [cursor=pointer]:
+            - /url: /auth/sign-in
+    - generic [ref=f1e57]:
+      - generic [ref=f1e59]:
+        - img "もりのパーティWikiのヘッダー画像" [ref=f1e61]
+        - generic [ref=f1e62]:
+          - banner [ref=f1e63]:
+            - paragraph [ref=f1e64]: Minecraft コミュニティ「もりのパーティ」の公式Wiki
+            - img "もりのパーティWikiのロゴ" [ref=f1e65]
+            - paragraph [ref=f1e66]: ここはみんなでもりぱに関する情報の共有をする場所です！もりぱにログインしたことがあれば、すぐに使い始めることができます。
+          - generic [ref=f1e67]:
+            - heading "最近の投稿" [level=2] [ref=f1e68]
+            - generic [ref=f1e69]:
+              - link [ref=f1e70] [cursor=pointer]:
+                - /url: /ttmatome
+                - article [ref=f1e71]:
+                  - img "トラップタワー（TT）まとめ" [ref=f1e72]
+                  - generic [ref=f1e73]:
+                    - heading "トラップタワー（TT）まとめ" [level=2] [ref=f1e74]
+                    - paragraph [ref=f1e75]: サーバー内のトラップタワーをまとめました。
+              - link [ref=f1e76] [cursor=pointer]:
+                - /url: /seijyu
+                - article [ref=f1e77]:
+                  - img "新規の町案内" [ref=f1e78]
+                  - generic [ref=f1e79]:
+                    - heading "新規の町案内" [level=2] [ref=f1e80]
+                    - paragraph [ref=f1e81]: もりパ！の新しい町「星樹の街」
+              - link [ref=f1e82] [cursor=pointer]:
+                - /url: /grief
+                - article [ref=f1e83]:
+                  - img "GriefPrevention" [ref=f1e84]
+                  - generic [ref=f1e85]:
+                    - heading "GriefPrevention" [level=2] [ref=f1e86]
+                    - paragraph [ref=f1e87]: 自分の土地を正しく管理しよう
+              - link [ref=f1e88] [cursor=pointer]:
+                - /url: /barenjagajaga2
+                - article [ref=f1e89]:
+                  - img "【終了】第五回ボートレース大会 in バレンタイン杯2" [ref=f1e90]
+                  - generic [ref=f1e91]:
+                    - heading "【終了】第五回ボートレース大会 in バレンタイン杯2" [level=2] [ref=f1e92]
+                    - paragraph [ref=f1e93]: アイス・バレンジャガジャガ
+              - link [ref=f1e94] [cursor=pointer]:
+                - /url: /antilag
+                - article [ref=f1e95]:
+                  - img "「負荷」について" [ref=f1e96]
+                  - generic [ref=f1e97]:
+                    - heading "「負荷」について" [level=2] [ref=f1e98]
+                    - paragraph [ref=f1e99]: Q? 重い、負荷かかってる…って何？いったいどういうことだ？の疑問に（多分）わかりやすくお答えします！そして、ラグを発生させないための、負荷軽減案内です。あなた一つの行動で、サーバーがもっと安定化し、住人みんなが楽しく住めるようになったら良いと思いませんか？
+              - link [ref=f1e100] [cursor=pointer]:
+                - /url: /mobfarmcontrol
+                - article [ref=f1e101]:
+                  - img "Q＆A 作っても良い「トラップタワー」の詳細" [ref=f1e102]
+                  - generic [ref=f1e103]:
+                    - heading "Q＆A 作っても良い「トラップタワー」の詳細" [level=2] [ref=f1e104]
+                    - paragraph [ref=f1e105]: はてなふむ辞典に直接掲載するのは長いため移動しました。便宜上アーカイブ振り分けしているだけですのでページを消さないでくださいませ。
+          - generic [ref=f1e106]:
+            - heading "おすすめのページ" [level=2] [ref=f1e107]
+            - generic [ref=f1e108]:
+              - link [ref=f1e109] [cursor=pointer]:
+                - /url: /train_hutago1
+                - article [ref=f1e110]:
+                  - img "鉄道案内:森元森林鉄道" [ref=f1e111]
+                  - generic [ref=f1e112]:
+                    - heading "鉄道案内:森元森林鉄道" [level=2] [ref=f1e113]
+                    - paragraph [ref=f1e114]: 広く伸びる森林鉄道
+              - link [ref=f1e115] [cursor=pointer]:
+                - /url: /chat
+                - article [ref=f1e116]:
+                  - img "チャットについて！日本語入力の仕方など" [ref=f1e117]
+                  - generic [ref=f1e118]:
+                    - heading "チャットについて！日本語入力の仕方など" [level=2] [ref=f1e119]
+                    - paragraph [ref=f1e120]: 森パのゲーム内チャットについての説明です！
+              - link [ref=f1e121] [cursor=pointer]:
+                - /url: /lwc
+                - article [ref=f1e122]:
+                  - img "LWC" [ref=f1e123]
+                  - generic [ref=f1e124]:
+                    - heading "LWC" [level=2] [ref=f1e125]
+                    - paragraph [ref=f1e126]: 大切なものを、保護しよう。
+              - link [ref=f1e127] [cursor=pointer]:
+                - /url: /gamble
+                - article [ref=f1e128]:
+                  - img "釣りギャンブル" [ref=f1e129]
+                  - generic [ref=f1e130]:
+                    - heading "釣りギャンブル" [level=2] [ref=f1e131]
+                    - paragraph [ref=f1e132]: ～普通の遊びで満足できないあなたへ～
+              - link [ref=f1e133] [cursor=pointer]:
+                - /url: /res-history
+                - article [ref=f1e134]:
+                  - img "歴代の資源サーバーさん" [ref=f1e135]
+                  - generic [ref=f1e136]:
+                    - heading "歴代の資源サーバーさん" [level=2] [ref=f1e137]
+                    - paragraph [ref=f1e138]: 消えゆく資源での思い出を記録します
+              - link [ref=f1e139] [cursor=pointer]:
+                - /url: /event01
+                - article [ref=f1e140]:
+                  - img "第0回 夏祭り ( 2019.08.09 ~ 2019.08.11 )" [ref=f1e141]
+                  - generic [ref=f1e142]:
+                    - heading "第0回 夏祭り ( 2019.08.09 ~ 2019.08.11 )" [level=2] [ref=f1e143]
+                    - paragraph [ref=f1e144]: それは、、、夢のような時間でした、、、
+          - generic [ref=f1e147]:
+            - heading "もりのパーティで、 あなたを待っています" [level=2] [ref=f1e148]: もりのパーティで、あなたを待っています
+            - paragraph [ref=f1e149]: のんびり、ゆったり、気ままに、あそべる Minecraftサーバー「もりのパーティ」に参加してみませんか?
+            - link "ちょっと入ってみる" [ref=f1e150] [cursor=pointer]:
+              - /url: https://morino.party/
+      - contentinfo [ref=f1e152]:
+        - generic [ref=f1e153]:
+          - link [ref=f1e154] [cursor=pointer]:
+            - /url: /
+            - img "MorinoParty" [ref=f1e155]
+          - paragraph [ref=f1e156]: もりのパーティ公式Wiki もりぱうぃき!
+        - list [ref=f1e157]:
+          - listitem [ref=f1e158]:
+            - link "カテゴリ一覧" [ref=f1e159] [cursor=pointer]:
+              - /url: /category
+          - listitem [ref=f1e160]:
+            - link "Wiki投稿ガイド" [ref=f1e161] [cursor=pointer]:
+              - /url: /guide
+          - listitem [ref=f1e162]:
+            - link "マークダウン記法について" [ref=f1e163] [cursor=pointer]:
+              - /url: /guide
+        - list [ref=f1e164]:
+          - listitem [ref=f1e165]:
+            - link "もりのパーティ Webサイト" [ref=f1e166] [cursor=pointer]:
+              - /url: https://morino.party/
+          - listitem [ref=f1e170]:
+            - link "はじめての方へ" [ref=f1e171] [cursor=pointer]:
+              - /url: https://morino.party/first
+          - listitem [ref=f1e175]:
+            - link "行動規約" [ref=f1e176] [cursor=pointer]:
+              - /url: https://morino.party/guideline
+        - list [ref=f1e180]:
+          - link "オープンソースライセンス" [ref=f1e181] [cursor=pointer]:
+            - /url: /license
+        - paragraph [ref=f1e182]: © morino.party"Minecraft" is a trademark of Mojang Synergies AB
+  - alert [ref=f1e183]
+  - region "Notifications, bottom-end (alt+T)"

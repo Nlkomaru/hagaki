@@ -129,6 +129,32 @@ export async function listPosts(
  * missing `info.json` — e.g. content served without the generate step — just
  * leaves `created`/`updated` as `null`.
  */
+/**
+ * Parse one `index.mdx` (frontmatter + body) into a post. Exposed so callers
+ * that read the file from somewhere other than the CDN — e.g. the repository
+ * itself, for an editor that must see not-yet-deployed changes — get the same
+ * shape as `posts.getByUuid`.
+ */
+export function parsePostMarkdown(
+    markdown: string,
+    uuid: string,
+    generated?: { created?: string | null; updated?: string | null },
+): WikiPostDetail {
+    const { data, content } = matter(markdown);
+    return {
+        title: (data.title as string | undefined) ?? "",
+        slug: (data.slug as string | undefined) ?? "",
+        uuid: (data.uuid as string | undefined) ?? uuid,
+        description: (data.description as string | undefined) ?? "",
+        category: (data.category as string | undefined) ?? "",
+        thumbnail: parseThumbnail(data.thumbnail),
+        created: toIsoDate(generated?.created),
+        updated: toIsoDate(generated?.updated),
+        modified: parseImportedEdits(data.modified),
+        body: content,
+    };
+}
+
 export async function getPostByUuid(
     deps: ContentFetcherDeps,
     uuid: string,
@@ -140,7 +166,6 @@ export async function getPostByUuid(
     ]);
     if (!postRes.ok) return null;
     const markdown = await postRes.text();
-    const { data, content } = matter(markdown);
 
     let created: string | null = null;
     let updated: string | null = null;
@@ -153,18 +178,7 @@ export async function getPostByUuid(
         updated = toIsoDate(info.updated);
     }
 
-    return {
-        title: (data.title as string | undefined) ?? "",
-        slug: (data.slug as string | undefined) ?? "",
-        uuid: (data.uuid as string | undefined) ?? uuid,
-        description: (data.description as string | undefined) ?? "",
-        category: (data.category as string | undefined) ?? "",
-        thumbnail: parseThumbnail(data.thumbnail),
-        created,
-        updated,
-        modified: parseImportedEdits(data.modified),
-        body: content,
-    };
+    return parsePostMarkdown(markdown, uuid, { created, updated });
 }
 
 /**
