@@ -39,5 +39,6 @@ export function postFrontmatter(post: WikiPostDetail) {
         ...(post.modified && post.modified.length > 0
             ? { modified: post.modified }
             : {}),
+        ...(post.draft ? { draft: true } : {}),
     };
 }

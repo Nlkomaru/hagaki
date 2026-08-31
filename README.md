@@ -119,9 +119,48 @@ await hagaki.commits.commitFiles({
 });
 ```
 
-認証・権限・下書き状態といったアプリ固有の概念は hagaki は持たない。
+認証・権限といったアプリ固有の概念は hagaki は持たない。
 コミットの著者だけ `Committer` (`hagaki/auth/better-auth` の
 `committerFromBetterAuth`) で渡す。
+
+下書きはコンテンツフォーマットの一部（frontmatter の `draft: true`）。
+生成物の manifest / slug-index に載らず、`hagaki/content-worker` が
+`article/<uuid>/` 配下への直接アクセスを 404 にするため、リポジトリ経由
+（`posts.getFromRepo` / `posts.listUuidsInRepo`）でのみ読める。
+詳細は `sample/README.md` の「下書き」を参照。
+
+## CLI
+
+コンテンツリポジトリは hagaki を依存に入れて CLI で生成物を作る:
+
+```sh
+hagaki generate [--content-dir ./content]
+```
+
+`article/<uuid>/info.json` / `article.json` / `slug-index.json` /
+`categories.json` を生成する。編集履歴のマージに git を使うので、
+Actions では `fetch-depth: 0` で checkout する。
+
+## 配信 worker（`hagaki/content-worker`）
+
+Workers Assets の前段に置く Hono アプリ。draft の遮断だけを担い、
+それ以外は静的配信にパススルーする:
+
+```ts
+// src/index.ts
+import { createContentApp } from "hagaki/content-worker";
+export default createContentApp();
+```
+
+```jsonc
+// wrangler.jsonc
+"main": "src/index.ts",
+"assets": {
+    "directory": "./content",
+    "binding": "ASSETS",
+    "run_worker_first": ["/article/*"]
+}
+```
 
 ## Markdown 機能
 

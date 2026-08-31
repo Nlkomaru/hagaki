@@ -70,6 +70,7 @@ export async function savePost(
         ...(form.modified && form.modified.length > 0
             ? { modified: form.modified }
             : {}),
+        ...(form.draft ? { draft: true } : {}),
     });
 
     // Assets to add or remove alongside the post can only be expressed as a

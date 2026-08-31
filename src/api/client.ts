@@ -15,6 +15,7 @@ import {
     listDirectory,
     listFilesRecursive,
     listPathCommits,
+    listTreePaths,
     type PathCommit,
     type RepoEntry,
     type RepoFile,
@@ -65,6 +66,12 @@ export interface HagakiClient {
         ): Promise<WikiPostDetail | null>;
         /** Whether the post's `index.mdx` exists in the repository. */
         existsInRepo(uuid: string): Promise<boolean>;
+        /**
+         * Uuid of every post in the repository, drafts included, from a
+         * single git-tree listing. Diff against the CDN manifest to find
+         * posts the CDN doesn't serve (drafts, not-yet-deployed).
+         */
+        listUuidsInRepo(): Promise<string[]>;
         /** Every repository path belonging to a post (body + assets). */
         repoPaths(uuid: string): Promise<string[]>;
         /** Commits that touched the post's `index.mdx`, newest first. */
@@ -161,6 +168,21 @@ export function createHagakiClient(config: HagakiConfig): HagakiClient {
             },
             async existsInRepo(uuid) {
                 return fileExists(await filesDeps(), postPath(uuid));
+            },
+            async listUuidsInRepo() {
+                const prefix = `${contentPath}/`;
+                const paths = await listTreePaths(await filesDeps());
+                const uuids: string[] = [];
+                for (const p of paths) {
+                    if (!p.startsWith(prefix)) continue;
+                    const [dir, file, ...deeper] = p
+                        .slice(prefix.length)
+                        .split("/");
+                    if (dir && file === "index.mdx" && deeper.length === 0) {
+                        uuids.push(dir);
+                    }
+                }
+                return uuids;
             },
             async repoPaths(uuid) {
                 return listFilesRecursive(

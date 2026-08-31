@@ -2,7 +2,12 @@
     "$schema": "node_modules/wrangler/config-schema.json",
     "name": "content-hagaki",
     "compatibility_date": "2025-05-20",
+    "main": "src/index.ts",
     "assets": {
-        "directory": "./content"
+        "directory": "./content",
+        "binding": "ASSETS",
+        // Only article files need the worker (draft gating); manifests and
+        // categories stay asset-first for performance.
+        "run_worker_first": ["/article/*"]
     }
 }

@@ -36,11 +36,25 @@ YAML。gray-matter（js-yaml）でシリアライズされる形（2スペース
 | `uuid` | string (UUID) | ✓ | ディレクトリ名と一致。不変 |
 | `category` | string | ✓ | カテゴリの `slug` を参照 |
 | `description` | string | ✓ | 概要。空なら `''` |
+| `draft` | boolean | – | `true` で下書き。公開記事では省略（`false` は書かない） |
 | `thumbnail` | object | – | サムネイル。無い記事では省略 |
 | `thumbnail.imageId` | string (UUID) | ✓* | `assets/<imageId>.avif` を指す。パスは uuid + imageId から導出できるので書かない |
 | `thumbnail.blurhash64` | string | ✓* | blurhash を **base64 エンコード**した文字列（下記参照） |
 
 \* `thumbnail` を書く場合は必須。
+
+### 下書き（`draft`）
+
+`draft: true` の記事はリポジトリには存在するが、公開されない:
+
+- 生成物の `article.json` / `slug-index.json` に**載らない**
+  （`info.json` は生成される — 公開への切り替えが manifest の差分だけで済む）。
+- 配信 worker（`hagaki/content-worker`）が `article/<uuid>/` 配下
+  （`index.mdx` / `info.json` / `assets/*`）への直接アクセスを 404 にする。
+- 閲覧・編集はリポジトリ経由（`posts.getFromRepo` / `posts.listUuidsInRepo`）のみ。
+
+公開するときは frontmatter から `draft` を消す（`savePost` は `draft` が
+falsy なら書き出さない）。
 
 ### blurhash64
 
@@ -153,9 +167,9 @@ MDX（Markdown + `<Image />` コンポーネントのみ）。hagaki 自身は�
 
 ## 生成物（GitHub Actions）
 
-コンテンツリポジトリへの push で GitHub Actions が `generate-lists.ts` を
-実行して以下を生成し、そのまま `wrangler deploy` の Assets に含める。
-git にはコミットしない（`.gitignore` 対象）。
+コンテンツリポジトリへの push で GitHub Actions が `hagaki generate`
+（hagaki CLI）を実行して以下を生成し、そのまま `wrangler deploy` の Assets に
+含める。git にはコミットしない（`.gitignore` 対象）。
 
 ### `article/<uuid>/info.json` — 記事メタデータ
 
@@ -190,12 +204,15 @@ git コミット履歴のマージは**ここで焼き込む**ので、消費側
 
 ### `article.json` — 全記事 manifest
 
-`info.json` から `history` を除いたオブジェクトの配列。一覧・ソート用。
+`info.json` から `history` を除き、代わりにそれを編集者ごとに畳んだ
+`editors`（`{ player, edits, lastEditedAt }` の配列、最終編集の新しい順）を
+加えたオブジェクトの配列。一覧・ソート用。`draft: true` の記事は載らない。
 
 ### `slug-index.json` — slug → uuid マップ
 
 [issue #4](https://github.com/Nlkomaru/hagaki/issues/4) 対応。`getPostBySlug` が
 manifest 全件の線形探索をやめて O(1) で uuid を引けるようにする。
+`draft: true` の記事は載らない（この値集合が配信 worker の公開判定の正にもなる）。
 
 ```json
 { "test": "0e95538c-f931-4616-8b39-88cb608c90b4" }
@@ -220,10 +237,13 @@ manifest 全件の線形探索をやめて O(1) で uuid を引けるように�
 - `blurhash64`: `<Image>` の語彙（`image-jsx.ts`）は `blurHash64` 属性で
   読み書きし、`hagaki/react` の `<Image>` も `blurHash64` のみ受ける。
   内部 API（`ImageComponentAttrs.blurhash` など）は生の blurhash のまま。
-- 生成物: `generate-lists.ts` が `info.json` / `article.json` /
+- 生成物: hagaki CLI（`hagaki generate`）が `info.json` / `article.json` /
   `slug-index.json` / `categories.json` を生成。`getPostBySlug` は
   slug-index を引き、404 なら manifest 走査にフォールバック。
   `getPostByUuid` は `info.json` から `created` / `updated` を補う。
+- 配信: `hagaki/content-worker` の `createContentApp()`（Hono）を
+  `run_worker_first: ["/article/*"]` で Assets の前段に置き、draft の
+  `article/<uuid>/` 配下を 404 にする（template/content-worker 参照）。
 - Actions: `template/content-worker/.github/workflows/deploy.yml`
   （履歴マージのため `fetch-depth: 0` 必須）。
 

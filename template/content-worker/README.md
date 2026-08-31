@@ -11,10 +11,10 @@ content/
 ├── article/                  # 記事ごとのディレクトリ (uuid 名)
 │   └── <uuid>/
 │       ├── index.mdx         #   記事本体 (frontmatter 必須: slug, uuid)
-│       ├── info.json         #   ← generate-lists.ts が生成 (履歴マージ済みメタデータ)
+│       ├── info.json         #   ← hagaki generate が生成 (履歴マージ済みメタデータ)
 │       └── assets/<file>     #   その記事専用の画像
 ├── categories/               # カテゴリ JSON
-├── article.json              # ← scripts/generate-lists.ts が生成
+├── article.json              # ← hagaki generate が生成
 ├── slug-index.json           # ← 同上 (slug → uuid)
 └── categories.json           # ← 同上
 ```
