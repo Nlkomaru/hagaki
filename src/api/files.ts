@@ -140,6 +140,30 @@ export async function listFilesRecursive(
     return paths;
 }
 
+/**
+ * Every blob path in the repository at the branch tip, in one API call
+ * (`git/trees?recursive=1`) — unlike {@link listFilesRecursive}, which walks
+ * the contents API one directory at a time. Use this to enumerate articles.
+ *
+ * GitHub truncates the listing for very large trees (`truncated: true`); a
+ * warning is logged when that happens.
+ */
+export async function listTreePaths(deps: FilesDeps): Promise<string[]> {
+    const { octokit, owner, repo, branch } = deps;
+    const { data } = await octokit.request(
+        "GET /repos/{owner}/{repo}/git/trees/{tree_sha}",
+        { owner, repo, tree_sha: branch, recursive: "1" },
+    );
+    if (data.truncated) {
+        console.warn(
+            "hagaki: git tree listing was truncated by GitHub — some paths are missing",
+        );
+    }
+    return data.tree
+        .filter((e) => e.type === "blob" && typeof e.path === "string")
+        .map((e) => e.path as string);
+}
+
 /** Commits that touched a path, newest first. */
 export async function listPathCommits(
     deps: FilesDeps,

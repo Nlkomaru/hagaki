@@ -50,6 +50,40 @@ export interface WikiPostDetail extends WikiPost {
      * what happened before the migration. Omitted on new posts.
      */
     modified?: ImportedEdit[];
+    /**
+     * Draft posts stay out of the generated manifests (`article.json`,
+     * `slug-index.json`) and the content worker refuses to serve their
+     * `article/<uuid>/` files, so they are only reachable through the
+     * repository. Omitted (not `false`) on published posts.
+     */
+    draft?: boolean;
+}
+
+/**
+ * Per-article edit summary for one player, folded out of the merged history
+ * by the generate step.
+ */
+export interface EditorSummary {
+    /** Minecraft player uuid. */
+    player: string;
+    /** Number of edits this player made to the article. */
+    edits: number;
+    /** When this player last edited the article. */
+    lastEditedAt: string;
+}
+
+/**
+ * One `article.json` manifest entry. Carries `editors` instead of the full
+ * `history` so "articles edited by player X" doesn't require fetching every
+ * article's `info.json`.
+ */
+export interface ArticleSummary extends WikiPost {
+    editors: EditorSummary[];
+}
+
+/** Shape of a generated `article/<uuid>/info.json`. */
+export interface ArticleInfo extends WikiPost {
+    history: WikiHistoryEntry[];
 }
 
 export interface GetAllPostsOptions {

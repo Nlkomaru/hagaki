@@ -61,7 +61,7 @@ function postInfoByUuidPath(c: ContentConfig, uuid: string): string {
     return `/article/${encodeURIComponent(uuid)}/info.json`;
 }
 
-function parseThumbnail(value: unknown): WikiThumbnail | null {
+export function parseThumbnail(value: unknown): WikiThumbnail | null {
     if (typeof value !== "object" || value === null) return null;
     const { imageId, blurhash64 } = value as {
         imageId?: unknown;
@@ -74,7 +74,7 @@ function parseThumbnail(value: unknown): WikiThumbnail | null {
     };
 }
 
-function toIsoDate(value: unknown): string | null {
+export function toIsoDate(value: unknown): string | null {
     if (value instanceof Date) return value.toISOString();
     if (typeof value === "string" && value) {
         const t = Date.parse(value);
@@ -151,6 +151,7 @@ export function parsePostMarkdown(
         created: toIsoDate(generated?.created),
         updated: toIsoDate(generated?.updated),
         modified: parseImportedEdits(data.modified),
+        ...(data.draft === true ? { draft: true } : {}),
         body: content,
     };
 }

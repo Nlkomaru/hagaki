@@ -1,64 +1,21 @@
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import matter from "gray-matter";
+import { parseThumbnail, toIsoDate } from "../api/content.js";
+import { toUrlSlug } from "../api/slug.js";
+import type {
+    ArticleInfo,
+    ArticleSummary,
+    EditorSummary,
+    WikiHistoryEntry,
+} from "../api/types.js";
 
 const execFileAsync = promisify(execFile);
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const CONTENT_DIR = path.join(__dirname, "../content");
-const ARTICLE_DIR = path.join(CONTENT_DIR, "article");
-const CATEGORIES_DIR = path.join(CONTENT_DIR, "categories");
-
 /** Committer name convention: `"<display name> (<player uuid>)"`. */
 const COMMITTER_PLAYER_REGEX = /\(([0-9a-f-]{36})\)\s*$/i;
-
-interface HistoryEntry {
-    date: string;
-    player: string | null;
-    source: "imported" | "git";
-    commit?: string;
-}
-
-interface ArticleInfo {
-    title: string;
-    slug: string;
-    uuid: string;
-    category: string;
-    description: string;
-    thumbnail: { imageId: string; blurhash64: string } | null;
-    created: string | null;
-    updated: string | null;
-    history: HistoryEntry[];
-}
-
-function toUrlSlug(str: string): string {
-    return encodeURIComponent(
-        str
-            .normalize("NFKC")
-            .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) =>
-                String.fromCharCode(s.charCodeAt(0) - 0xfee0),
-            )
-            .replace(/\s+/g, "-")
-            .replace(/[　]/g, "-")
-            .replace(/--+/g, "-")
-            .replace(/^-+|-+$/g, "")
-            .toLowerCase(),
-    );
-}
-
-function toIsoDate(value: unknown): string | null {
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === "string") {
-        const t = Date.parse(value);
-        if (!Number.isNaN(t)) return new Date(t).toISOString();
-    }
-    return null;
-}
 
 async function ensureDir(dir: string) {
     await fs.mkdir(dir, { recursive: true });
@@ -73,10 +30,10 @@ async function writeJson(filePath: string, value: unknown) {
  * Git commits are the primary history; these entries only cover what happened
  * before the migration.
  */
-function importedHistory(data: Record<string, unknown>): HistoryEntry[] {
+function importedHistory(data: Record<string, unknown>): WikiHistoryEntry[] {
     const modified = data.modified;
     if (!Array.isArray(modified)) return [];
-    const entries: HistoryEntry[] = [];
+    const entries: WikiHistoryEntry[] = [];
     for (const raw of modified) {
         if (typeof raw !== "object" || raw === null) continue;
         const entry = raw as { date?: unknown; player?: unknown };
@@ -97,7 +54,10 @@ function importedHistory(data: Record<string, unknown>): HistoryEntry[] {
  * (`makeCommitter`'s default format). Requires a full clone — in Actions,
  * check out with `fetch-depth: 0`.
  */
-async function gitHistory(articleDirName: string): Promise<HistoryEntry[]> {
+async function gitHistory(
+    contentDir: string,
+    articleDirName: string,
+): Promise<WikiHistoryEntry[]> {
     try {
         const { stdout } = await execFileAsync(
             "git",
@@ -107,7 +67,7 @@ async function gitHistory(articleDirName: string): Promise<HistoryEntry[]> {
                 "--",
                 path.join("article", articleDirName),
             ],
-            { cwd: CONTENT_DIR },
+            { cwd: contentDir },
         );
         return stdout
             .trim()
@@ -131,38 +91,59 @@ async function gitHistory(articleDirName: string): Promise<HistoryEntry[]> {
     }
 }
 
-function readThumbnail(
-    data: Record<string, unknown>,
-): ArticleInfo["thumbnail"] {
-    const thumbnail = data.thumbnail;
-    if (typeof thumbnail !== "object" || thumbnail === null) return null;
-    const { imageId, blurhash64 } = thumbnail as {
-        imageId?: unknown;
-        blurhash64?: unknown;
-    };
-    if (typeof imageId !== "string" || !imageId) return null;
-    return {
-        imageId,
-        blurhash64: typeof blurhash64 === "string" ? blurhash64 : "",
-    };
+/**
+ * 履歴を編集者ごとに畳む。最終編集が新しい順。
+ *
+ * `player` が null のエントリ (移行前の履歴でプレイヤーを解決できなかったもの、
+ * コミッター名が `"<name> (<uuid>)"` 規約でないコミット) は誰の編集か辿れないため
+ * 除外する。
+ */
+function summarizeEditors(history: WikiHistoryEntry[]): EditorSummary[] {
+    const byPlayer = new Map<string, EditorSummary>();
+    for (const entry of history) {
+        if (!entry.player) continue;
+        const current = byPlayer.get(entry.player);
+        if (current) {
+            current.edits += 1;
+            if (entry.date > current.lastEditedAt) {
+                current.lastEditedAt = entry.date;
+            }
+        } else {
+            byPlayer.set(entry.player, {
+                player: entry.player,
+                edits: 1,
+                lastEditedAt: entry.date,
+            });
+        }
+    }
+    return [...byPlayer.values()].sort((a, b) =>
+        b.lastEditedAt.localeCompare(a.lastEditedAt),
+    );
 }
 
 /**
- * Scan `content/article/<uuid>/index.mdx` and emit:
+ * Scan `<contentDir>/article/<uuid>/index.mdx` and emit:
  *   - `article/<uuid>/info.json` — per-article metadata with the merged
  *     history (frontmatter `modified` + git commits) baked in
- *   - `article.json`  — manifest of every article (info minus `history`)
+ *   - `article.json`  — manifest of every article (info minus `history`, plus
+ *     `editors` folded out of it)
  *   - `slug-index.json` — slug → uuid map, so `getPostBySlug` can resolve a
  *     slug without scanning the manifest
+ *
+ * Draft posts (`draft: true`) still get an `info.json` — so publishing later
+ * only changes the manifests — but stay out of `article.json` and
+ * `slug-index.json`; the content worker blocks their `article/<uuid>/` files.
  */
-async function generateArticleLists() {
-    await ensureDir(ARTICLE_DIR);
-    const entries = await fs.readdir(ARTICLE_DIR, { withFileTypes: true });
-    const manifest: Array<Omit<ArticleInfo, "history">> = [];
+async function generateArticleLists(contentDir: string) {
+    const articleDir = path.join(contentDir, "article");
+    await ensureDir(articleDir);
+    const entries = await fs.readdir(articleDir, { withFileTypes: true });
+    const manifest: ArticleSummary[] = [];
     const slugIndex: Record<string, string> = {};
+    let drafts = 0;
     for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const indexPath = path.join(ARTICLE_DIR, entry.name, "index.mdx");
+        const indexPath = path.join(articleDir, entry.name, "index.mdx");
         let raw: string;
         try {
             raw = await fs.readFile(indexPath, "utf-8");
@@ -180,7 +161,7 @@ async function generateArticleLists() {
 
         const history = [
             ...importedHistory(data),
-            ...(await gitHistory(entry.name)),
+            ...(await gitHistory(contentDir, entry.name)),
         ].sort((a, b) => a.date.localeCompare(b.date));
 
         const info: ArticleInfo = {
@@ -189,41 +170,51 @@ async function generateArticleLists() {
             uuid: data.uuid ?? entry.name,
             category: data.category ?? "",
             description: data.description ?? "",
-            thumbnail: readThumbnail(data),
+            thumbnail: parseThumbnail(data.thumbnail),
             created: history[0]?.date ?? null,
             updated: history[history.length - 1]?.date ?? null,
             history,
         };
 
-        await writeJson(path.join(ARTICLE_DIR, entry.name, "info.json"), info);
+        await writeJson(path.join(articleDir, entry.name, "info.json"), info);
+
+        if (data.draft === true) {
+            drafts += 1;
+            continue;
+        }
+        const existing = slugIndex[info.slug];
+        if (existing) {
+            throw new Error(
+                `duplicate slug "${info.slug}": ${existing} and ${info.uuid}`,
+            );
+        }
         const { history: _history, ...summary } = info;
-        manifest.push(summary);
+        manifest.push({ ...summary, editors: summarizeEditors(history) });
         slugIndex[info.slug] = info.uuid;
     }
-    await writeJson(path.join(CONTENT_DIR, "article.json"), manifest);
-    await writeJson(path.join(CONTENT_DIR, "slug-index.json"), slugIndex);
-    console.info(`article.json: ${manifest.length} posts`);
+    await writeJson(path.join(contentDir, "article.json"), manifest);
+    await writeJson(path.join(contentDir, "slug-index.json"), slugIndex);
+    console.info(
+        `article.json: ${manifest.length} posts${drafts > 0 ? ` (${drafts} drafts excluded)` : ""}`,
+    );
 }
 
-async function generateCategoriesList() {
-    await ensureDir(CATEGORIES_DIR);
-    const files = await fs.readdir(CATEGORIES_DIR);
+async function generateCategoriesList(contentDir: string) {
+    const categoriesDir = path.join(contentDir, "categories");
+    await ensureDir(categoriesDir);
+    const files = await fs.readdir(categoriesDir);
     const categories: Array<Record<string, unknown>> = [];
     for (const file of files) {
         if (!file.endsWith(".json")) continue;
-        const raw = await fs.readFile(path.join(CATEGORIES_DIR, file), "utf-8");
+        const raw = await fs.readFile(path.join(categoriesDir, file), "utf-8");
         categories.push(JSON.parse(raw));
     }
-    await writeJson(path.join(CONTENT_DIR, "categories.json"), categories);
+    await writeJson(path.join(contentDir, "categories.json"), categories);
     console.info(`categories.json: ${categories.length} categories`);
 }
 
-async function main() {
-    await generateArticleLists();
-    await generateCategoriesList();
+/** Generate every manifest for a hagaki content directory. */
+export async function generateManifests(contentDir: string) {
+    await generateArticleLists(contentDir);
+    await generateCategoriesList(contentDir);
 }
-
-main().catch((err) => {
-    console.error(err);
-    process.exit(1);
-});

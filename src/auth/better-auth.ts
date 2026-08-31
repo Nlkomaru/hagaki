@@ -64,7 +64,8 @@ export function mapOAuthProfile(
     profile: OAuthProfile,
     options?: MapOAuthProfileOptions,
 ): MappedOAuthUser {
-    const id = firstString(profile, [...(options?.idClaims ?? []), "sub"]) ?? "";
+    const id =
+        firstString(profile, [...(options?.idClaims ?? []), "sub"]) ?? "";
     const name = firstString(profile, [
         ...(options?.nameClaims ?? []),
         "preferred_username",
