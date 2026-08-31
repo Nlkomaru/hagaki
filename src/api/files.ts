@@ -72,6 +72,37 @@ export async function getFile(
     }
 }
 
+/**
+ * Read one file's raw bytes from the repository — for binary content
+ * (images) that {@link getFile}'s UTF-8 decoding would corrupt. `null` when
+ * it does not exist. The contents API only inlines files up to 1MB; larger
+ * blobs return `null`.
+ */
+export async function getBinaryFile(
+    deps: FilesDeps,
+    path: string,
+    ref?: string,
+): Promise<Uint8Array | null> {
+    const { octokit, owner, repo, branch } = deps;
+    try {
+        const { data } = await octokit.request(
+            "GET /repos/{owner}/{repo}/contents/{path}",
+            { owner, repo, path, ref: ref ?? branch },
+        );
+        if (Array.isArray(data) || data.type !== "file" || !data.content) {
+            return null;
+        }
+        const normalized = data.content.replace(/\n/g, "");
+        if (typeof Buffer !== "undefined") {
+            return new Uint8Array(Buffer.from(normalized, "base64"));
+        }
+        const binary = atob(normalized);
+        return Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    } catch {
+        return null;
+    }
+}
+
 /** Whether a path exists on the branch (or at `ref`). */
 export async function fileExists(
     deps: FilesDeps,

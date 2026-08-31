@@ -10,6 +10,7 @@ import {
 } from "./content.js";
 import {
     fileExists,
+    getBinaryFile,
     getFile,
     getPathDiff,
     listDirectory,
@@ -90,6 +91,8 @@ export interface HagakiClient {
     /** Raw repository reads, for anything the CDN doesn't serve. */
     files: {
         get(path: string, ref?: string): Promise<RepoFile | null>;
+        /** Raw bytes — for binary files (images) UTF-8 decoding would corrupt. */
+        getBinary(path: string, ref?: string): Promise<Uint8Array | null>;
         exists(path: string, ref?: string): Promise<boolean>;
         list(path: string, ref?: string): Promise<RepoEntry[]>;
         listRecursive(path: string, ref?: string): Promise<string[]>;
@@ -230,6 +233,9 @@ export function createHagakiClient(config: HagakiConfig): HagakiClient {
         files: {
             async get(path, ref) {
                 return getFile(await filesDeps(), path, ref);
+            },
+            async getBinary(path, ref) {
+                return getBinaryFile(await filesDeps(), path, ref);
             },
             async exists(path, ref) {
                 return fileExists(await filesDeps(), path, ref);
