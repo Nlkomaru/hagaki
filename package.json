@@ -1,0 +1,80 @@
+{
+    "name": "hagaki",
+    "version": "0.1.0",
+    "description": "Headless GitHub-backed markdown editor and content API",
+    "type": "module",
+    "license": "MIT",
+    "sideEffects": false,
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./react": {
+            "types": "./dist/react.d.ts",
+            "import": "./dist/react.js"
+        },
+        "./editor": {
+            "types": "./dist/editor.d.ts",
+            "import": "./dist/editor.js"
+        },
+        "./image": {
+            "types": "./dist/image.d.ts",
+            "import": "./dist/image.js"
+        },
+        "./markdown": {
+            "types": "./dist/markdown.d.ts",
+            "import": "./dist/markdown.js"
+        },
+        "./pending-images": {
+            "types": "./dist/pending-images.d.ts",
+            "import": "./dist/pending-images.js"
+        },
+        "./auth/better-auth": {
+            "types": "./dist/auth/better-auth.d.ts",
+            "import": "./dist/auth/better-auth.js"
+        },
+        "./content-worker": {
+            "types": "./dist/content-worker.d.ts",
+            "import": "./dist/content-worker.js"
+        }
+    },
+    "bin": {
+        "hagaki": "./dist/cli.js"
+    },
+    "dependencies": {
+        "@jsquash/avif": "^2.0.0",
+        "blurhash": "^2.0.5",
+        "gray-matter": "^4.0.3",
+        "hono": "^4.13.5",
+        "octokit": "^5.0.1",
+        "remark-mdx": "^3.1.1",
+        "remark-parse": "^11.0.0",
+        "unified": "^11.0.5",
+        "uuid": "^11.1.0"
+    },
+    "peerDependencies": {
+        "@mdxeditor/editor": "^3",
+        "@mdxeditor/gurx": "^1.2.4",
+        "react": ">=18",
+        "react-dom": ">=18"
+    },
+    "peerDependenciesMeta": {
+        "@mdxeditor/editor": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        },
+        "react-dom": {
+            "optional": true
+        }
+    },
+    "engines": {
+        "node": ">=18"
+    }
+}
