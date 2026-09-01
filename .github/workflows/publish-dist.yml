@@ -48,15 +48,28 @@ jobs:
           cp -r dist package.json README.md /tmp/dist-pkg/
 
       - name: Push the dist branch
+        # force-push しない: 消費側の lockfile は dist ブランチのコミット SHA を
+        # 固定するため、履歴を書き換えると過去の SHA が GC されて
+        # インストールできなくなる。既存の dist に積み上げる。
         run: |
-          cd /tmp/dist-pkg
-          git init -b dist
+          REMOTE="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          mkdir /tmp/dist-branch
+          cd /tmp/dist-branch
+          if git clone --depth 1 --branch dist "${REMOTE}" .; then
+            find . -mindepth 1 -maxdepth 1 -not -name .git -exec rm -rf {} +
+          else
+            git init -b dist
+            git remote add origin "${REMOTE}"
+          fi
+          cp -r /tmp/dist-pkg/. .
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "dist: build of ${GITHUB_SHA}"
-          git push --force \
-            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-            dist
+          if git diff --cached --quiet; then
+            echo "dist unchanged — nothing to push"
+          else
+            git commit -m "dist: build of ${GITHUB_SHA}"
+            git push origin dist
+          fi
         env:
           GITHUB_TOKEN: ${{ github.token }}
