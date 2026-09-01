@@ -1,0 +1,62 @@
+# main への push ごとにビルド済みパッケージを `dist` ブランチへ force-push する。
+#
+# コンテンツリポジトリは `github:Nlkomaru/hagaki#dist` を依存に取る。
+# main を直接参照すると、インストール時に prepare (tsup ビルド) が
+# 取得先の環境で走ることになり、pnpm のバージョンやビルドスクリプト許可の
+# 差で壊れやすい。dist ブランチは dist/ 同梱・scripts なしなので、
+# 消費側では何もビルドされない。
+name: Publish dist branch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+
+      - name: Assemble the dist package
+        run: |
+          # 消費側で何も実行されないよう scripts を落とし、実行時に不要な
+          # devDependencies も削る。dependencies / peerDependencies は残す。
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            delete pkg.scripts;
+            delete pkg.devDependencies;
+            fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
+          '
+          mkdir /tmp/dist-pkg
+          cp -r dist package.json README.md /tmp/dist-pkg/
+
+      - name: Push the dist branch
+        run: |
+          cd /tmp/dist-pkg
+          git init -b dist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "dist: build of ${GITHUB_SHA}"
+          git push --force \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            dist
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
