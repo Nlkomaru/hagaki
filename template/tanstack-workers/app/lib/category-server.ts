@@ -7,7 +7,7 @@ export const listCategoriesFn = createServerFn({ method: "GET" }).handler(
 );
 
 export const getCategoryFn = createServerFn({ method: "GET" })
-    .inputValidator((slug: string) => slug)
+    .validator((slug: string) => slug)
     .handler(async ({ data: slug }) => {
         const client = await getHagakiClient();
         const list = await client.categories.list();
@@ -17,7 +17,7 @@ export const getCategoryFn = createServerFn({ method: "GET" })
 const SLUG_RE = /^[a-z0-9-]+$/;
 
 export const commitCategoryFn = createServerFn({ method: "POST" })
-    .inputValidator((category: WikiCategory) => category)
+    .validator((category: WikiCategory) => category)
     .handler(async ({ data }) => {
         // The slug is concatenated straight into a repo path — never trust
         // the client to keep it inside content/categories/.
