@@ -13,10 +13,10 @@
         "hagaki": "workspace:*"
     },
     "devDependencies": {
-        "@types/node": "^25.0.3",
+        "@types/node": "^26.6.5",
         "gray-matter": "^4.0.3",
-        "tsx": "^4.19.4",
+        "tsx": "^4.23.15",
         "typescript": "^5.9.3",
-        "wrangler": "^4.55.0"
+        "wrangler": "^4.151.2"
     }
 }

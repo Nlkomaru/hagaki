@@ -36,7 +36,7 @@ interface GetEditorPostInput {
 }
 
 export const getEditorPostFn = createServerFn({ method: "GET" })
-    .inputValidator((input: GetEditorPostInput) => input)
+    .validator((input: GetEditorPostInput) => input)
     .handler(async ({ data }) => {
         // エンドポイント単位の保護: server fn は直接叩ける RPC なので、
         // レイアウト側の beforeLoad ではなくここで検証する(未認証 401)。
@@ -73,7 +73,7 @@ export const getEditorPostFn = createServerFn({ method: "GET" })
  * commit succeeded.
  */
 export const commitPostFn = createServerFn({ method: "POST" })
-    .inputValidator((input: CommitPostInput) => input)
+    .validator((input: CommitPostInput) => input)
     .handler(async ({ data }) => {
         await requireSession();
         // Committer は userinfo 由来の Minecraft UUID + MCID(session.user.id
