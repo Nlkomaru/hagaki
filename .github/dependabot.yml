@@ -1,0 +1,22 @@
+version: 2
+updates:
+  # pnpm workspace（ルート / template/tanstack-workers / template/content-worker）は
+  # ルートの pnpm-lock.yaml 1 つで管理されているので "/" だけで全体が対象になる。
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
