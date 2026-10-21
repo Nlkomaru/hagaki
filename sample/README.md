@@ -22,7 +22,7 @@ content/
 
 - `slug` は変わりうるが `uuid` は記事の一生を通じて不変。パスは常に uuid ベース。
 - 「生成物」は手書き・コミットせず、コンテンツリポジトリへの push で走る
-  GitHub Actions が生成して、そのまま `wrangler deploy` に含める。
+  GitHub Actions が生成して、そのまま `cf deploy` で Static Assets に含める。
   詳細は[生成物](#生成物github-actions)を参照。
 
 ## 記事 frontmatter（`article/<uuid>/index.mdx`）
@@ -40,8 +40,26 @@ YAML。gray-matter（js-yaml）でシリアライズされる形（2スペース
 | `thumbnail` | object | – | サムネイル。無い記事では省略 |
 | `thumbnail.imageId` | string (UUID) | ✓* | `assets/<imageId>.avif` を指す。パスは uuid + imageId から導出できるので書かない |
 | `thumbnail.blurhash64` | string | ✓* | blurhash を **base64 エンコード**した文字列（下記参照） |
+| `option` | object | – | カテゴリが宣言した追加フィールドの値。無い記事では省略 |
+| `option.<key>` | string \| number \| boolean | – | [カテゴリの `option.<key>`](#カテゴリcategoriesslugjson) に対応する値 |
 
 \* `thumbnail` を書く場合は必須。
+
+### カテゴリ固有の値（`option`）
+
+記事が属するカテゴリが `option` で宣言したフィールドの値を、同じキーで
+`option` の下に持つ。トップレベルではなくネストするので、カテゴリが新しい
+キーを宣言しても `title` などの予約キーとぶつからない。
+
+```yaml
+option:
+  x: 1000
+  world: overworld
+```
+
+型は宣言に従うスカラー（string / number / boolean）のみ。`type: "enum"` の
+フィールドは選択肢の `id` を入れる。hagaki は値の意味を検証せず、
+スカラー以外（日付・ネストしたマップなど）は読み込み時に捨てる。
 
 ### 下書き（`draft`）
 
@@ -138,13 +156,24 @@ MDX（Markdown + `<Image />` コンポーネントのみ）。hagaki 自身は�
 
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
-| `option.<key>.type` | `"string"` \| `"integer"` \| `"number"` \| `"boolean"` | 値の種類 |
+| `option.<key>.type` | `"string"` \| `"integer"` \| `"number"` \| `"boolean"` \| `"enum"` | 値の種類 |
 | `option.<key>.label` | string? | 入力欄のラベル。省略時はキー名 |
 | `option.<key>.description` | string? | 入力欄に添える説明 |
 | `option.<key>.placeholder` | string? | 未入力時のプレースホルダ |
 | `option.<key>.required` | boolean? | 記事が必ず持つ必要があるか |
+| `option.<key>.enum` | `{ id, display }[]`? | `type: "enum"` の選択肢。エディタに出す順で並べる |
+| `option.<key>.default` | string \| number \| boolean? | 新規記事の入力欄の初期値。`type: "enum"` なら選択肢の `id` |
 
-キーは記事の frontmatter に保存されるキーそのもの。
+キーは記事の frontmatter の [`option.<key>`](#カテゴリ固有の値option) に
+保存されるキーそのもの。
+
+`type: "enum"` は選択肢から 1 つ選ぶフィールドで、選択肢は
+`enum` に `{ id, display }` の配列で宣言する。frontmatter に保存されるのは
+`id`、エディタが表示するのは `display` なので、表示名を変えても記事側の値は
+書き換えなくてよい。
+
+`default` は新規記事の入力欄に入れておく初期値。既存記事の欠けている値を
+読み出し時に補うものではない（記事は書かれたままの frontmatter を持つ）。
 
 ```json
 {
@@ -158,6 +187,18 @@ MDX（Markdown + `<Image />` コンポーネントのみ）。hagaki 自身は�
             "description": "ワールド座標の X。地図で記事を探すのに使う",
             "placeholder": "1000",
             "required": true
+        },
+        "world": {
+            "type": "enum",
+            "label": "ワールド",
+            "description": "座標が属するワールド",
+            "required": true,
+            "default": "overworld",
+            "enum": [
+                { "id": "overworld", "display": "オーバーワールド" },
+                { "id": "nether", "display": "ネザー" },
+                { "id": "the_end", "display": "エンド" }
+            ]
         }
     }
 }
@@ -168,7 +209,7 @@ MDX（Markdown + `<Image />` コンポーネントのみ）。hagaki 自身は�
 ## 生成物（GitHub Actions）
 
 コンテンツリポジトリへの push で GitHub Actions が `hagaki generate`
-（hagaki CLI）を実行して以下を生成し、そのまま `wrangler deploy` の Assets に
+（hagaki CLI）を実行して以下を生成し、そのまま `cf deploy` の Static Assets に
 含める。git にはコミットしない（`.gitignore` 対象）。
 
 ### `article/<uuid>/info.json` — 記事メタデータ
@@ -188,6 +229,7 @@ git コミット履歴のマージは**ここで焼き込む**ので、消費側
         "imageId": "98e879e4-d625-4ca7-8e20-4df80ab0c285",
         "blurhash64": "VUhLMGc4JCV4XlZzfld4dFJpdFIlZ05iTXtWQHNTb2ZWQHNv"
     },
+    "option": { "x": 1000, "world": "overworld" },
     "created": "2024-06-19T15:00:00.000Z",
     "updated": "2026-08-01T00:00:00.000Z",
     "history": [
@@ -201,6 +243,8 @@ git コミット履歴のマージは**ここで焼き込む**ので、消費側
   ディレクトリに触れた git コミット（`source: "git"`、`player` は committer 名
   `"<表示名> (<uuid>)"` から抽出）を date 昇順でマージしたもの。
 - `created` = `history` 先頭の date、`updated` = 末尾の date。
+- `option` は frontmatter の値をそのまま焼き込む（無い記事では省略）。
+  一覧側から座標などで記事を絞れるように `article.json` にも載る。
 
 ### `article.json` — 全記事 manifest
 

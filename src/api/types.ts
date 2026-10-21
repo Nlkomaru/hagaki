@@ -21,6 +21,15 @@ export interface ImportedEdit {
     player: string;
 }
 
+/**
+ * What a post filled in for the option fields its category declares, keyed by
+ * the same keys as {@link WikiCategory.option}. Stored under `option:` in the
+ * frontmatter, so a category can declare new fields without colliding with the
+ * post's own keys. An `"enum"` field holds the chosen
+ * {@link CategoryOptionEnumValue.id}.
+ */
+export type PostOptionValues = Record<string, string | number | boolean>;
+
 export interface WikiPost {
     title: string;
     slug: string;
@@ -40,6 +49,11 @@ export interface WikiPost {
      */
     created: string | null;
     updated: string | null;
+    /**
+     * Values for the option fields the post's category declares. Omitted when
+     * the post has none — hagaki neither requires nor interprets them.
+     */
+    option?: PostOptionValues;
 }
 
 export interface WikiPostDetail extends WikiPost {
@@ -96,7 +110,18 @@ export type CategoryOptionFieldType =
     | "string"
     | "integer"
     | "number"
-    | "boolean";
+    | "boolean"
+    | "enum";
+
+/**
+ * One choice of an `"enum"` field. `id` is what the article frontmatter
+ * stores; `display` is what an editor shows in the picker, so renaming a
+ * choice never rewrites the articles that picked it.
+ */
+export interface CategoryOptionEnumValue {
+    id: string;
+    display: string;
+}
 
 /**
  * One extra frontmatter field that posts in a category carry, described well
@@ -114,6 +139,19 @@ export interface CategoryOptionField {
     placeholder?: string;
     /** Whether a post in this category must fill it in. */
     required?: boolean;
+    /**
+     * Choices for an `"enum"` field, in the order an editor should show them.
+     * Only meaningful when `type` is `"enum"`; the frontmatter holds the
+     * selected {@link CategoryOptionEnumValue.id}.
+     */
+    enum?: CategoryOptionEnumValue[];
+    /**
+     * Value an editor pre-fills a new post's input with. Matches `type` —
+     * an `"enum"` field defaults to one of its
+     * {@link CategoryOptionEnumValue.id}s. Existing posts are untouched:
+     * this is an editing convenience, not a fallback applied on read.
+     */
+    default?: string | number | boolean;
 }
 
 export interface WikiCategory {

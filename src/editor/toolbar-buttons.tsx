@@ -20,6 +20,5 @@ export {
     InsertThematicBreak,
     ListsToggle,
     Separator,
-    ShowSandpackInfo,
     UndoRedo,
 } from "@mdxeditor/editor";

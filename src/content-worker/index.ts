@@ -48,16 +48,16 @@ async function publishedUuids(
 
 /**
  * Content-serving worker for a hagaki content repository, meant to sit in
- * front of a Workers Assets deployment of the `content/` directory with
- * `run_worker_first` covering `/article/*`:
+ * front of a Workers Static Assets deployment of the `content/` directory
+ * with `runWorkerFirst` covering `/article/*`:
  *
- * ```jsonc
- * // wrangler.jsonc
- * "main": "src/index.ts",
- * "assets": {
- *     "directory": "./content",
- *     "binding": "ASSETS",
- *     "run_worker_first": ["/article/*"]
+ * ```ts
+ * // cloudflare.config.ts (+ `assetsDirectory: "./content"` in
+ * // wrangler.config.ts)
+ * worker: {
+ *     entrypoint: "src/index.ts",
+ *     assets: { runWorkerFirst: ["/article/*"] },
+ *     env: { ASSETS: bindings.assets() },
  * }
  * ```
  *

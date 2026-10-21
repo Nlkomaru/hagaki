@@ -1,10 +1,7 @@
 node_modules
 dist
-.output
+.cloudflare/
 .tanstack
-.vinxi
-.wrangler
-worker-configuration.d.ts
 *.log
 .DS_Store
 .idea

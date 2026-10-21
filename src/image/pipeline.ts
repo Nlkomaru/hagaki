@@ -24,7 +24,7 @@ const BLURHASH_Y_COMPONENTS = 4;
 export const MAX_AVIF_BYTES = 500 * 1024;
 
 export interface ProcessedImage {
-    avif: Uint8Array;
+    avif: Uint8Array<ArrayBuffer>;
     blurhash: string;
     width: number;
     height: number;
@@ -110,7 +110,7 @@ export async function analyzeImage(
 export async function encodeAnalyzedImage(
     analyzed: AnalyzedImage,
     options?: ProcessImageOptions,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
     const quality = options?.quality ?? AVIF_QUALITY;
     const maxBytes = options?.maxBytes ?? MAX_AVIF_BYTES;
 

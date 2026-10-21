@@ -1,5 +1,5 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.3.9/schema.json",
+    "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
     "root": false,
     "extends": "//",
     "css": {
@@ -14,11 +14,8 @@
             "**",
             "!**/node_modules",
             "!**/dist/**",
-            "!**/.output/**",
             "!**/.tanstack/**",
-            "!**/.vinxi/**",
-            "!**/.wrangler/**",
-            "!worker-configuration.d.ts",
+            "!**/.cloudflare/**",
             "!app/routeTree.gen.ts"
         ]
     },
@@ -28,11 +25,8 @@
             "**",
             "!**/node_modules",
             "!**/dist/**",
-            "!**/.output/**",
             "!**/.tanstack/**",
-            "!**/.vinxi/**",
-            "!**/.wrangler/**",
-            "!worker-configuration.d.ts",
+            "!**/.cloudflare/**",
             "!app/routeTree.gen.ts"
         ]
     }

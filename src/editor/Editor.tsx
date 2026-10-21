@@ -56,7 +56,7 @@ export interface HagakiEditorRootProps {
     /** Async image preview handler (resolves a URL to a display-able URL). */
     onImagePreview?: (src: string) => Promise<string>;
     /**
-     * MDX image flow: analyze the file + start the pending upload
+     * MDX image flow: analyze the file + start the pending encode
      * (`startPending` from `hagaki/pending-images`), resolving with the
      * attributes for the `<Image />` component to insert. Consumed by
      * `<HagakiEditor.InsertImage.ComponentButton>`.
@@ -64,7 +64,7 @@ export interface HagakiEditorRootProps {
     onInsertImage?: (file: File) => Promise<ImageComponentAttrs>;
     /**
      * MDX image flow: display URL for a committed image id. When set,
-     * `<Image />` components render inline (blurhash placeholder + upload
+     * `<Image />` components render inline (blurhash placeholder + encode
      * progress); ids without a pending entry resolve through this callback.
      */
     imagePreviewUrlFor?: (id: string) => string;

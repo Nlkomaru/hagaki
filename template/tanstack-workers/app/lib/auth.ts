@@ -10,11 +10,8 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 const authCache = new Map<string, Promise<Auth>>();
 
 async function buildAuth(baseURL: string) {
-    // AUTH_SECRET は Cloudflare Secrets Store バインディング (BSM: shared/AUTH_SECRET)
-    // から供給されるため、他の env とは異なり非同期の `.get()` で読み出す。
-    // (Secrets Store バインディングは global scope での非同期 I/O を許可しない
-    // ため、モジュールトップレベルではなく初回リクエスト時に遅延解決する)
-    const secret = await env.AUTH_SECRET.get();
+    // AUTH_SECRET は Worker secret (`.dev.vars` / `cf deploy --secrets-file`)。
+    const secret = env.AUTH_SECRET;
 
     return betterAuth({
         baseURL,

@@ -7,6 +7,7 @@ import {
     hasErrors,
     removePending,
     subscribe as subscribePending,
+    sweepOrphanedErrors,
 } from "hagaki/pending-images";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { CategoryInput } from "~/components/CategoryInput";
@@ -19,11 +20,10 @@ import { Textarea } from "~/components/ui/textarea";
 import { cn } from "~/lib/utils";
 import { imagePathsFor } from "../lib/image-paths";
 import {
-    buildPostPayload,
+    collectNewImages,
     committedImageUrl,
     handleImagePreview,
     handleInsertImage,
-    sweepOrphanedImageErrors,
 } from "../lib/post-editor-images";
 import { commitPostFn, getEditorPostFn } from "../lib/post-editor-server";
 
@@ -73,14 +73,14 @@ function EditPostPage() {
     const [committedBody, setCommittedBody] = useState(initial.body);
     const [statusMsg, setStatusMsg] = useState<StatusMessage | null>(null);
     const [saving, setSaving] = useState(false);
-    const [imagesUploading, setImagesUploading] = useState(false);
+    const [imagesEncoding, setImagesEncoding] = useState(false);
     const [imagesFailed, setImagesFailed] = useState(false);
     const updatePost = (patch: Partial<WikiPostDetail>) =>
         setPost((current) => ({ ...current, ...patch }));
 
     useEffect(() => {
         const update = () => {
-            setImagesUploading(hasActive());
+            setImagesEncoding(hasActive());
             setImagesFailed(hasErrors());
         };
         update();
@@ -93,27 +93,21 @@ function EditPostPage() {
         try {
             // uuid is minted in the loader (emptyPost) so it stays stable for
             // the whole session — a retried save hits the same article dir.
-            const { uuid } = post;
-            const { body, pendingImageIds } = await buildPostPayload(
-                post.body,
-                uuid,
-                committedBody,
-            );
+            const { uuid, body } = post;
+            const images = await collectNewImages(body, committedBody);
             const deletePaths = diffRemovedImagePaths(
                 committedBody,
                 body,
                 imagePathsFor(uuid),
             );
-            const finalPost = { ...post, body };
             const result = await commitPostFn({
-                data: { post: finalPost, pendingImageIds, deletePaths },
+                data: { post, images, deletePaths },
             });
-            setPost(finalPost);
+            // 先にコミット済み本文を更新して表示を CDN URL へ切り替えてから、
+            // コミットに載った分だけ pending を破棄する (object URL も
+            // revoke される)。clearAll だと保存中に挿入された画像まで消える。
             setCommittedBody(body);
-            // コミットに載った分だけ破棄する。clearAll だと、この保存が
-            // 走っている間に挿入された（= 今回のコミットに入っていない）
-            // 画像のエントリまで消え、次の保存で復元不能になる。
-            for (const id of pendingImageIds) removePending(id);
+            for (const { imageId } of images) removePending(imageId);
             setStatusMsg({
                 kind: "success",
                 message: saveMessage(result.commitSha, deletePaths.length),
@@ -195,16 +189,13 @@ function EditPostPage() {
                             onChange={(body) => {
                                 // 本文から消えた失敗画像のエントリを回収し、
                                 // 保存ボタンが永久に無効化されるのを防ぐ。
-                                sweepOrphanedImageErrors(body);
+                                sweepOrphanedErrors(body);
                                 updatePost({ body });
                             }}
-                            onInsertImage={(file) =>
-                                handleInsertImage(file, post.uuid)
-                            }
+                            onInsertImage={handleInsertImage}
                             imagePreviewUrlFor={(id) =>
-                                // pending 中は descriptor が store を直接見る
-                                // ので、ここはアップロード完了後のプレビュー
-                                // URL とコミット済み CDN URL の解決を担う。
+                                // 未コミットの画像はメモリ上の object URL、
+                                // コミット済みは CDN。
                                 getPending(id)?.previewUrl ??
                                 committedImageUrl(id, post.uuid, cdnBaseUrl)
                             }
@@ -231,24 +222,24 @@ function EditPostPage() {
             )}
 
             <div className="sticky bottom-0 -mx-4 md:-mx-6 border-t bg-background/80 px-4 md:px-6 py-3 backdrop-blur flex items-center justify-end gap-3">
-                {imagesUploading && (
+                {imagesEncoding && (
                     <span className="text-sm text-muted-foreground">
-                        画像のアップロード待ち…
+                        画像の変換待ち…
                     </span>
                 )}
                 {imagesFailed && (
                     <span className="text-sm text-destructive">
-                        画像のアップロードに失敗しています
+                        画像の変換に失敗しています
                     </span>
                 )}
                 <Button
                     type="button"
-                    disabled={saving || imagesUploading || imagesFailed}
+                    disabled={saving || imagesEncoding || imagesFailed}
                     onClick={onSave}
                 >
                     {saving
                         ? "保存中…"
-                        : imagesUploading
+                        : imagesEncoding
                           ? "画像処理中…"
                           : "保存"}
                 </Button>

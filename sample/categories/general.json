@@ -9,6 +9,17 @@
             "description": "ワールド座標の X",
             "placeholder": "1000",
             "required": true
+        },
+        "world": {
+            "type": "enum",
+            "label": "ワールド",
+            "description": "座標が属するワールド",
+            "default": "overworld",
+            "enum": [
+                { "id": "overworld", "display": "オーバーワールド" },
+                { "id": "nether", "display": "ネザー" },
+                { "id": "the_end", "display": "エンド" }
+            ]
         }
     }
 }

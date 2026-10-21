@@ -1,15 +1,19 @@
-# main への push ごとにビルド済みパッケージを `dist` ブランチへ force-push する。
+# main への push ごとにビルド済みパッケージを `dist` ブランチへ積む。
 #
 # コンテンツリポジトリは `github:Nlkomaru/hagaki#dist` を依存に取る。
-# main を直接参照すると、インストール時に prepare (tsup ビルド) が
-# 取得先の環境で走ることになり、pnpm のバージョンやビルドスクリプト許可の
-# 差で壊れやすい。dist ブランチは dist/ 同梱・scripts なしなので、
-# 消費側では何もビルドされない。
+# main を直接参照すると、インストール時にビルドが取得先の環境で走ることに
+# なり、pnpm のバージョンやビルドスクリプト許可の差で壊れやすい。dist
+# ブランチは dist/ 同梱・scripts なしなので、消費側では何もビルドされない。
 name: Publish dist branch
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-dist
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -18,20 +22,24 @@ jobs:
   dist:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+      # package.json の packageManager から pnpm の版を読む
+      # pnpm 12 対応は v6.1.0 から (v6 タグは v6.0.10 のまま) なので SHA で固定する
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version-file: .node-version
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm build
+      - run: pnpm run typecheck
+
+      - run: pnpm run check:ci
+
+      - run: pnpm run build
 
       - name: Assemble the dist package
         run: |
@@ -42,6 +50,7 @@ jobs:
             const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
             delete pkg.scripts;
             delete pkg.devDependencies;
+            delete pkg.packageManager;
             fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
           '
           mkdir /tmp/dist-pkg

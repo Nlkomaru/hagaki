@@ -36,7 +36,8 @@ const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
 export async function resolveCommitter(): Promise<Committer> {
     const auth = await getAuth();
     const tokenResult = await auth.api.getAccessToken({
-        body: { providerId: "MineAuth" },
+        // DB-less: the linked account lives in the account cookie.
+        body: { useAccountCookie: true },
         headers: getRequest().headers,
     });
     const accessToken = tokenResult.accessToken;

@@ -19,8 +19,8 @@ export interface HagakiImageUrlInput {
 export type HagakiImageUrlResolver = (input: HagakiImageUrlInput) => string;
 
 /**
- * Default URL layout: an app route that can fall back from CDN to origin
- * storage (e.g. R2) per image. Override via `<HagakiImageConfig urlFor={…}>`
+ * Default URL layout: an app route that can fall back from the CDN to the
+ * repository per image (e.g. right after a commit, before the CDN deploy). Override via `<HagakiImageConfig urlFor={…}>`
  * or the `urlFor` prop when the app serves images elsewhere (direct CDN, …).
  */
 export const defaultImageUrl: HagakiImageUrlResolver = ({

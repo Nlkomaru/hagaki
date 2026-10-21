@@ -25,8 +25,8 @@ function normalizePrefix(value: string): string {
  * image the caller owns:
  *
  *   - legacy `![alt](url)` references whose URL lives under
- *     `config.urlPrefix` (external `http(s)://`, `data:` and session-local
- *     `pending:<id>` placeholders are skipped), and
+ *     `config.urlPrefix` (external `http(s)://` and `data:` URLs are
+ *     skipped), and
  *   - `<Image imageId="<uuid>" />` MDX components, whose blobs live at
  *     `<repoDir><id>.avif` by convention.
  *
@@ -42,7 +42,7 @@ export function extractRepoImagePaths(
     const paths = new Set<string>();
     for (const match of markdown.matchAll(IMG_REGEX)) {
         const url = match[1];
-        if (!url || !url.startsWith(urlPrefix)) continue;
+        if (!url?.startsWith(urlPrefix)) continue;
         const filename = url.slice(urlPrefix.length);
         if (!filename) continue;
         paths.add(`${repoDir}${filename}`);

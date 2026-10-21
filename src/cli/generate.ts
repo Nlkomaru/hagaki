@@ -3,7 +3,11 @@ import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { promisify } from "node:util";
 import matter from "gray-matter";
-import { parseThumbnail, toIsoDate } from "../api/content.js";
+import {
+    parseOptionValues,
+    parseThumbnail,
+    toIsoDate,
+} from "../api/content.js";
 import { toUrlSlug } from "../api/slug.js";
 import type {
     ArticleInfo,
@@ -164,6 +168,10 @@ async function generateArticleLists(contentDir: string) {
             ...(await gitHistory(contentDir, entry.name)),
         ].sort((a, b) => a.date.localeCompare(b.date));
 
+        // Bake the post's option values in too: without them a listing built
+        // from `article.json` can't filter on what a category declared.
+        const option = parseOptionValues(data.option);
+
         const info: ArticleInfo = {
             title: data.title ?? "",
             slug: toUrlSlug(data.slug ?? entry.name),
@@ -171,6 +179,7 @@ async function generateArticleLists(contentDir: string) {
             category: data.category ?? "",
             description: data.description ?? "",
             thumbnail: parseThumbnail(data.thumbnail),
+            ...(option ? { option } : {}),
             created: history[0]?.date ?? null,
             updated: history[history.length - 1]?.date ?? null,
             history,

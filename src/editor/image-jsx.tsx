@@ -28,8 +28,9 @@ import {
  */
 export interface ImageComponentContextValue {
     /**
-     * Analyze the file + start the pending upload, resolving with the
-     * attributes for the `<Image />` component to insert.
+     * Analyze the file + start the pending encode (`startPending` from
+     * `hagaki/pending-images`), resolving with the attributes for the
+     * `<Image />` component to insert.
      */
     onInsertImage?: (file: File) => Promise<ImageComponentAttrs>;
     /** Error sink for failed inserts. Falls back to `console.error`. */
@@ -42,8 +43,8 @@ export const ImageComponentContext = createContext<ImageComponentContextValue>(
 
 export interface ImageComponentConfig {
     /**
-     * Display URL for a committed image (CDN). Ids not present in the pending
-     * store resolve through this.
+     * Display URL for an image that has no pending entry — normally one that
+     * is already committed (CDN).
      */
     previewUrlFor: (id: string) => string;
 }
@@ -57,11 +58,11 @@ interface ConfiguredImageComponentDescriptor extends JsxComponentDescriptor {
  * Build a {@link JsxComponentDescriptor} that renders
  * `<Image imageId="…" />` MDX components inside the editor:
  *
- *   - while the pending upload is encoding/uploading — blurhash placeholder
- *     with an "アップロード中…" overlay;
- *   - once uploaded — the temporary Workers preview URL, fading in over the
- *     blurhash;
- *   - on upload error — an inline error with a delete button;
+ *   - while the pending entry is encoding — blurhash placeholder with a
+ *     "変換中…" overlay;
+ *   - once ready — the entry's in-memory `blob:` preview URL, fading in over
+ *     the blurhash;
+ *   - on encode error — an inline error with a delete button;
  *   - no pending entry (already committed) — `config.previewUrlFor(id)`.
  *
  * Node selection and Backspace deletion are left to MDXEditor's standard
@@ -175,7 +176,7 @@ function ImageComponentEditor(props: JsxEditorProps) {
         };
         return (
             <span style={errorBoxStyle}>
-                画像のアップロードに失敗しました
+                画像の変換に失敗しました
                 <button
                     type="button"
                     style={errorButtonStyle}
@@ -190,14 +191,10 @@ function ImageComponentEditor(props: JsxEditorProps) {
     const placeholder = blurhash
         ? blurhashToDataUrl(blurhash, width, height)
         : "";
-    // In-flight entries have no display URL yet; uploaded entries use the
-    // temporary Workers preview, committed images resolve through the config.
-    const src = entry
-        ? entry.status === "uploaded"
-            ? (entry.previewUrl ?? "")
-            : ""
-        : config.previewUrlFor(id);
-    const busy = entry?.status === "encoding" || entry?.status === "uploading";
+    // Encoding entries have no display URL yet; ready entries use their
+    // in-memory object URL, committed images resolve through the config.
+    const src = entry ? (entry.previewUrl ?? "") : config.previewUrlFor(id);
+    const busy = entry?.status === "encoding";
 
     // Same visual structure as `hagaki/react`'s `<Image>`
     // (`<span data-hagaki-img>`): aspect-ratio reserves the box, the blurhash
@@ -254,7 +251,7 @@ function ImageComponentEditor(props: JsxEditorProps) {
                 <span style={overlayStyle}>
                     <style>{SPINNER_CSS}</style>
                     <span style={spinnerStyle} />
-                    アップロード中…
+                    変換中…
                 </span>
             ) : null}
         </span>

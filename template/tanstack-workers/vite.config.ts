@@ -4,7 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 const fsStub = fileURLToPath(
     new URL("./app/lib/node-fs-stub.ts", import.meta.url),
@@ -12,12 +11,12 @@ const fsStub = fileURLToPath(
 
 export default defineConfig({
     plugins: [
+        // Reads cloudflare.config.ts (the cf plugin beta has no configPath).
         cloudflare({ viteEnvironment: { name: "ssr" } }),
         tailwindcss(),
         tanstackStart({
             srcDirectory: "app",
         }),
-        tsconfigPaths(),
         viteReact(),
     ],
     server: {
@@ -29,11 +28,13 @@ export default defineConfig({
     worker: {
         format: "es",
     },
-    // Cloudflare Workers (nodejs_compat_v2) does not provide `node:fs`.
+    // Cloudflare Workers (nodejs_compat) does not provide a usable `node:fs`.
     // gray-matter (used transitively via hagaki) imports it eagerly but only
     // calls into it in `matter.read(filepath)`, which we never use. Aliasing
     // to a stub keeps the worker bundle resolvable.
     resolve: {
+        // `~/*` from tsconfig.json.
+        tsconfigPaths: true,
         alias: [
             { find: /^node:fs$/, replacement: fsStub },
             { find: /^node:fs\/promises$/, replacement: fsStub },

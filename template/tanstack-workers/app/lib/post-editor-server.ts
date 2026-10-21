@@ -2,25 +2,25 @@ import { createServerFn } from "@tanstack/react-start";
 import type { WikiPostDetail } from "hagaki";
 import { validateAvifUpload } from "hagaki/image";
 import { requireSession } from "./auth-server";
+import { base64ToBytes } from "./base64";
 import { resolveCommitter } from "./committer";
 import { getHagakiClient } from "./hagaki";
-import { stripLegacyPendingImages } from "./post-editor-markdown";
+import type { EncodedImage } from "./post-editor-images";
 import { emptyPost, postFrontmatter } from "./post-frontmatter";
 import { getStringEnv } from "./server-env";
 
 interface CommitPostInput {
     post: WikiPostDetail;
     /**
-     * `<Image />` component ids referenced by the body that are not
-     * committed yet. Their AVIF bytes live in the pending R2 bucket
-     * (uploaded while editing) and are moved into the repo by this commit.
+     * Images referenced by the body that are not committed yet — the AVIF
+     * bytes the editor kept in memory, base64-encoded for the JSON payload.
      */
-    pendingImageIds: string[];
+    images: EncodedImage[];
     /** Repo paths of images that should be removed in this commit. */
     deletePaths?: string[];
 }
 
-/** Image ids double as R2 key segments and file names — uuids only. */
+/** Post and image ids become repo path segments — uuids only. */
 const UUID_REGEX = /^[a-f0-9-]{36}$/i;
 
 interface GetEditorPostInput {
@@ -36,7 +36,7 @@ interface GetEditorPostInput {
 }
 
 export const getEditorPostFn = createServerFn({ method: "GET" })
-    .inputValidator((input: GetEditorPostInput) => input)
+    .validator((input: GetEditorPostInput) => input)
     .handler(async ({ data }) => {
         // エンドポイント単位の保護: server fn は直接叩ける RPC なので、
         // レイアウト側の beforeLoad ではなくここで検証する(未認証 401)。
@@ -50,13 +50,11 @@ export const getEditorPostFn = createServerFn({ method: "GET" })
             data.knownUuid && UUID_REGEX.test(data.knownUuid)
                 ? data.knownUuid
                 : undefined;
-        const post = existing
-            ? { ...existing, body: stripLegacyPendingImages(existing.body) }
-            : {
-                  ...emptyPost(data.slug, knownUuid),
-                  title: data.seed?.title ?? "",
-                  category: data.seed?.category ?? "",
-              };
+        const post = existing ?? {
+            ...emptyPost(data.slug, knownUuid),
+            title: data.seed?.title ?? "",
+            category: data.seed?.category ?? "",
+        };
         return {
             post,
             categories: await client.categories.list(),
@@ -65,15 +63,13 @@ export const getEditorPostFn = createServerFn({ method: "GET" })
     });
 
 /**
- * Atomic save: pulls every pending image out of the temporary R2 bucket,
- * re-validates it, then commits the markdown post, those images, AND any
- * images the editor wants removed in a single GitHub tree commit. Combining
- * add/update/delete in one commit keeps `git revert` and the editor's view
- * of the repo in sync. The pending R2 objects are deleted only after the
- * commit succeeded.
+ * Atomic save: validates every new image the editor sent, then commits the
+ * markdown post, those images, AND any images the editor wants removed in a
+ * single GitHub tree commit. Combining add/update/delete in one commit keeps
+ * `git revert` and the editor's view of the repo in sync.
  */
 export const commitPostFn = createServerFn({ method: "POST" })
-    .inputValidator((input: CommitPostInput) => input)
+    .validator((input: CommitPostInput) => input)
     .handler(async ({ data }) => {
         await requireSession();
         // Committer は userinfo 由来の Minecraft UUID + MCID(session.user.id
@@ -84,9 +80,7 @@ export const commitPostFn = createServerFn({ method: "POST" })
                 "commitPostFn: post.uuid is required (mint one on first save)",
             );
         }
-        // The uuid becomes both a repo path segment and an R2 key segment —
-        // the API route validates its own params, so hold the commit path to
-        // the same standard instead of trusting the client.
+        // The uuid becomes a repo path segment — never trust the client.
         if (!UUID_REGEX.test(data.post.uuid)) {
             throw new Error(
                 `commitPostFn: invalid post uuid "${data.post.uuid}"`,
@@ -110,26 +104,17 @@ export const commitPostFn = createServerFn({ method: "POST" })
             }
         };
 
-        const { env } = await import("cloudflare:workers");
         const imageFiles: { path: string; content: Uint8Array }[] = [];
-        const pendingKeys: string[] = [];
-        for (const id of data.pendingImageIds) {
-            if (!UUID_REGEX.test(id)) {
-                throw new Error(`commitPostFn: invalid image id "${id}"`);
+        for (const { imageId, base64 } of data.images) {
+            if (!UUID_REGEX.test(imageId)) {
+                throw new Error(`commitPostFn: invalid image id "${imageId}"`);
             }
-            const pendingKey = `pending/${data.post.uuid}/${id}.avif`;
-            const object = await env.HAGAKI_PENDING_IMAGES.get(pendingKey);
-            if (!object) {
-                throw new Error(
-                    "画像データが見つかりません。画像を再挿入してください",
-                );
-            }
-            const content = new Uint8Array(await object.arrayBuffer());
+            const content = base64ToBytes(base64);
+            // 500KB + `ftyp` AVIF check — never commit arbitrary bytes.
             validateAvifUpload(content);
-            const path = `${assetsPrefix}${id}.avif`;
+            const path = `${assetsPrefix}${imageId}.avif`;
             assertOwned(path, "write");
             imageFiles.push({ path, content });
-            pendingKeys.push(pendingKey);
         }
 
         const deletePaths = data.deletePaths ?? [];
@@ -153,20 +138,6 @@ export const commitPostFn = createServerFn({ method: "POST" })
                 deletePaths.length,
             ),
         });
-
-        // The bytes now live in the repo — the pending copies are garbage.
-        // Deletion failures are non-fatal: the R2 lifecycle rule on the
-        // `pending/` prefix cleans up anything we miss here.
-        if (pendingKeys.length > 0) {
-            try {
-                await env.HAGAKI_PENDING_IMAGES.delete(pendingKeys);
-            } catch (e) {
-                console.warn(
-                    "commitPostFn: failed to delete pending images",
-                    e,
-                );
-            }
-        }
 
         return result;
     });

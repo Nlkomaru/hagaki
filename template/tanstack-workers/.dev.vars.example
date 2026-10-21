@@ -1,0 +1,4 @@
+# `cf dev` 用の Worker secret。`cp .dev.vars.example .dev.vars` して埋める。
+# 本番は `cf deploy --secrets-file <file>` かダッシュボードで設定する。
+HAGAKI_GITHUB_TOKEN=
+AUTH_SECRET=

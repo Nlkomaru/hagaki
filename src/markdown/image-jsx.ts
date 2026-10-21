@@ -1,5 +1,5 @@
 /**
- * MDX `<Image />` representation of an uploaded image:
+ * MDX `<Image />` representation of an article image:
  *
  *   <Image imageId="<uuid>" blurHash64="<base64>" width="1920" height="1080" alt="…" />
  *

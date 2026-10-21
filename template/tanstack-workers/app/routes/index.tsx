@@ -14,10 +14,10 @@ export const Route = createFileRoute("/")({
 });
 
 const ENV_VARS: Array<[string, string]> = [
-    ["HAGAKI_GITHUB_OWNER", "必須"],
-    ["HAGAKI_GITHUB_REPO", "必須"],
-    ["HAGAKI_GITHUB_TOKEN", "必須"],
-    ["HAGAKI_CDN_BASE_URL", "必須"],
+    ["HAGAKI_GITHUB_OWNER", "必須 · cloudflare.config.ts"],
+    ["HAGAKI_GITHUB_REPO", "必須 · cloudflare.config.ts"],
+    ["HAGAKI_GITHUB_TOKEN", "必須 · secret (.dev.vars)"],
+    ["HAGAKI_CDN_BASE_URL", "必須 · cloudflare.config.ts"],
     ["HAGAKI_GITHUB_BRANCH", '任意 · default "main"'],
     ["HAGAKI_GITHUB_CONTENT_PATH", '任意 · default "content/article"'],
 ];

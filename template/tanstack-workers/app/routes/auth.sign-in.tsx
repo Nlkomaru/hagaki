@@ -16,14 +16,17 @@ const getSessionFn = createServerFn({ method: "GET" }).handler(async () => {
 
 const signInFn = createServerFn({ method: "POST" }).handler(async () => {
     const auth = await getAuth();
-    const result = await auth.api.signInWithOAuth2({
+    // better-auth 1.7: genericOAuth providers sign in through the standard
+    // social endpoint (callback: `/api/auth/callback/MineAuth`).
+    const result = await auth.api.signInSocial({
         body: {
-            providerId: "MineAuth",
+            provider: "MineAuth",
             callbackURL: "/",
             scopes: ["openid", "profile", "email", "roles"],
         },
     });
-    const redirectUrl = typeof result === "string" ? result : result.url;
+    if (!result.url) throw new Error("MineAuth sign-in returned no URL");
+    const redirectUrl = result.url;
     return { redirectUrl };
 });
 

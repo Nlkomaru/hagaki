@@ -7,9 +7,9 @@ import { editorI18n } from "./editor-i18n";
 export interface EditorProps {
     markdown: string;
     onChange: (markdown: string) => void;
-    /** 新フロー: ファイル → analyze+startPending を行い directive 属性を返す */
+    /** ファイル → startPending を行い `<Image />` の属性を返す */
     onInsertImage?: (file: File) => Promise<ImageComponentAttrs>;
-    /** 新フロー: `<Image />` の imageId → 表示 URL（pending か CDN） */
+    /** `<Image />` の imageId → 表示 URL（未コミットは object URL、それ以外は CDN） */
     imagePreviewUrlFor?: (id: string) => string;
     /** 旧形式 `![alt](url)` 画像の表示 URL 解決（後方互換） */
     onImagePreview?: (src: string) => Promise<string>;
@@ -42,7 +42,7 @@ export function Editor(props: EditorProps) {
                     {/*<HagakiEditor.CreateLink />*/}
                     <HagakiEditor.InsertImage.ComponentButton
                         className="inline-flex items-center justify-center gap-1.5 size-8 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors data-[disabled=true]:opacity-50 data-[disabled=true]:pointer-events-none"
-                        title="画像をアップロード"
+                        title="画像を挿入"
                     >
                         <ImagePlus className="size-4" />
                     </HagakiEditor.InsertImage.ComponentButton>

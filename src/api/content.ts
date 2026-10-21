@@ -2,6 +2,7 @@ import matter from "gray-matter";
 import type {
     GetAllPostsOptions,
     ImportedEdit,
+    PostOptionValues,
     WikiCategory,
     WikiPost,
     WikiPostDetail,
@@ -74,6 +75,30 @@ export function parseThumbnail(value: unknown): WikiThumbnail | null {
     };
 }
 
+/**
+ * Read the frontmatter `option:` map. YAML hands back whatever was written —
+ * dates, nulls, nested maps — so only the scalars an option field can hold
+ * survive; a map with nothing usable in it is dropped entirely.
+ */
+export function parseOptionValues(
+    value: unknown,
+): PostOptionValues | undefined {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return undefined;
+    }
+    const values: PostOptionValues = {};
+    for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+        if (
+            typeof raw === "string" ||
+            typeof raw === "number" ||
+            typeof raw === "boolean"
+        ) {
+            values[key] = raw;
+        }
+    }
+    return Object.keys(values).length > 0 ? values : undefined;
+}
+
 export function toIsoDate(value: unknown): string | null {
     if (value instanceof Date) return value.toISOString();
     if (typeof value === "string" && value) {
@@ -141,6 +166,7 @@ export function parsePostMarkdown(
     generated?: { created?: string | null; updated?: string | null },
 ): WikiPostDetail {
     const { data, content } = matter(markdown);
+    const option = parseOptionValues(data.option);
     return {
         title: (data.title as string | undefined) ?? "",
         slug: (data.slug as string | undefined) ?? "",
@@ -151,6 +177,7 @@ export function parsePostMarkdown(
         created: toIsoDate(generated?.created),
         updated: toIsoDate(generated?.updated),
         modified: parseImportedEdits(data.modified),
+        ...(option ? { option } : {}),
         ...(data.draft === true ? { draft: true } : {}),
         body: content,
     };

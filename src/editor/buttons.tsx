@@ -289,7 +289,7 @@ export interface InsertImageComponentButtonProps
  * `onInsertImage` (via {@link ImageComponentContext}) and inserts an
  * `<Image imageId="…" blurHash64="…" width="…" height="…" alt="" />` component
  * with the attributes it resolves to. The blurhash placeholder shows
- * immediately while the AVIF encode + upload continue in the background.
+ * immediately while the AVIF encode continues in the background.
  *
  * Disabled unless the editor was given an `onInsertImage` prop. If
  * `onInsertImage` rejects, nothing is inserted and the error is reported via

@@ -1,7 +1,7 @@
 import matter from "gray-matter";
 import type { Octokit } from "octokit";
 import type { Committer } from "../auth/index.js";
-import { type CommitFile, commitFiles } from "./tree-commit.js";
+import { bytesToBase64, type CommitFile, commitFiles } from "./tree-commit.js";
 import type { SaveResult, WikiPostDetail } from "./types.js";
 
 export interface GitHubRepoConfig {
@@ -19,10 +19,11 @@ export interface SavePostOptions {
     committer?: Committer;
     commitMessage?: string;
     /**
-     * Extra files to write in the same commit — typically the images the
-     * editor uploaded while the post was being written. Supplying these (or
-     * {@link deletePaths}) switches the save to a tree commit so the post and
-     * its assets land together instead of in separate commits.
+     * Extra files to write in the same commit — typically the images inserted
+     * while the post was being written (`collectPendingImages` from
+     * `hagaki/pending-images`, sent by the browser as `Blob`s or base64).
+     * Supplying these (or {@link deletePaths}) switches the save to a tree
+     * commit so the post and its assets land together.
      */
     files?: CommitFile[];
     /** Repository paths to remove in the same commit. */
@@ -32,18 +33,6 @@ export interface SavePostOptions {
 export interface SavePostDeps {
     octokit: Octokit;
     repo: GitHubRepoConfig;
-}
-
-function toBase64(input: string): string {
-    if (typeof Buffer !== "undefined") {
-        return Buffer.from(input, "utf-8").toString("base64");
-    }
-    // Edge / browser fallback
-    const bytes = new TextEncoder().encode(input);
-    let bin = "";
-    for (const b of bytes) bin += String.fromCharCode(b);
-    // btoa exists in browsers and Workers
-    return btoa(bin);
 }
 
 export async function savePost(
@@ -67,6 +56,9 @@ export async function savePost(
         description: form.description,
         // Optional fields are omitted, not written as null/empty.
         ...(form.thumbnail ? { thumbnail: form.thumbnail } : {}),
+        ...(form.option && Object.keys(form.option).length > 0
+            ? { option: form.option }
+            : {}),
         ...(form.modified && form.modified.length > 0
             ? { modified: form.modified }
             : {}),
@@ -101,7 +93,7 @@ export async function savePost(
         };
     }
 
-    const contentEncoded = toBase64(content);
+    const contentEncoded = bytesToBase64(new TextEncoder().encode(content));
 
     let fileSha: string | undefined;
     try {

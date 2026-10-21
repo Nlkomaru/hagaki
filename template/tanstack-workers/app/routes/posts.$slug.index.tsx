@@ -9,7 +9,7 @@ import { getHagakiClient } from "../lib/hagaki";
 import { getStringEnv } from "../lib/server-env";
 
 const getPostFn = createServerFn({ method: "GET" })
-    .inputValidator((slug: string) => slug)
+    .validator((slug: string) => slug)
     .handler(async ({ data: slug }) => {
         const { env } = await import("cloudflare:workers");
         const client = await getHagakiClient();

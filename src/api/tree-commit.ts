@@ -2,9 +2,23 @@ import type { Octokit } from "octokit";
 import type { Committer } from "../auth/index.js";
 
 export interface CommitFile {
-    /** Repository path, e.g. `content/img/abc.avif` or `content/wiki/hello.md` */
+    /**
+     * Repository path, e.g. `content/article/<uuid>/index.mdx` or
+     * `content/article/<uuid>/assets/<imageId>.avif`.
+     */
     path: string;
-    content: ArrayBuffer | Uint8Array | string;
+    /**
+     * File body. Binary content (images) can be passed as bytes or a `Blob` —
+     * e.g. a `File` taken straight from a request's `FormData` — or as a
+     * base64 string with `encoding: "base64"` when it arrived in a JSON
+     * payload.
+     */
+    content: ArrayBuffer | Uint8Array | Blob | string;
+    /**
+     * How a string `content` is interpreted: `"utf-8"` text (default) or
+     * already-encoded `"base64"` bytes. Ignored for non-string content.
+     */
+    encoding?: "utf-8" | "base64";
 }
 
 export interface CommitFilesInput {
@@ -34,20 +48,27 @@ export interface CommitFilesDeps {
     branch: string;
 }
 
-function toBase64(input: ArrayBuffer | Uint8Array | string): string {
-    if (typeof input === "string") {
-        if (typeof Buffer !== "undefined") {
-            return Buffer.from(input, "utf-8").toString("base64");
-        }
-        return btoa(unescape(encodeURIComponent(input)));
-    }
-    const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+export function bytesToBase64(bytes: Uint8Array): string {
     if (typeof Buffer !== "undefined") {
         return Buffer.from(bytes).toString("base64");
     }
     let bin = "";
     for (const b of bytes) bin += String.fromCharCode(b);
     return btoa(bin);
+}
+
+async function toBase64(file: CommitFile): Promise<string> {
+    const { content } = file;
+    if (typeof content === "string") {
+        return file.encoding === "base64"
+            ? content
+            : bytesToBase64(new TextEncoder().encode(content));
+    }
+    if (content instanceof Uint8Array) return bytesToBase64(content);
+    if (content instanceof ArrayBuffer) {
+        return bytesToBase64(new Uint8Array(content));
+    }
+    return bytesToBase64(new Uint8Array(await content.arrayBuffer()));
 }
 
 /**
@@ -88,7 +109,7 @@ export async function commitFiles(
             const { data } = await octokit.rest.git.createBlob({
                 owner,
                 repo,
-                content: toBase64(file.content),
+                content: await toBase64(file),
                 encoding: "base64",
             });
             return { path: file.path, sha: data.sha };

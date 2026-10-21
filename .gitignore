@@ -1,9 +1,11 @@
 node_modules
 dist
+.cloudflare/
 *.log
 .DS_Store
 .idea
 .vscode
 .env
 .env.local
+.dev.vars
 .npmrc

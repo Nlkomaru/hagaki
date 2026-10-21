@@ -3,6 +3,7 @@
     "version": "0.1.0",
     "description": "Headless GitHub-backed markdown editor and content API",
     "type": "module",
+    "packageManager": "pnpm@12.14.0",
     "license": "MIT",
     "sideEffects": false,
     "files": [
@@ -47,30 +48,30 @@
         "hagaki": "./dist/cli.js"
     },
     "scripts": {
-        "build": "tsup",
-        "prepare": "tsup",
-        "dev": "tsup --watch",
+        "build": "tsdown",
+        "dev": "tsdown --watch",
         "typecheck": "tsc --noEmit",
         "clean": "rm -rf dist",
         "check": "biome check ./ --write",
         "check:ci": "biome check ./"
     },
     "dependencies": {
-        "@jsquash/avif": "^2.0.0",
+        "@jsquash/avif": "^2.1.1",
         "blurhash": "^2.0.5",
         "gray-matter": "^4.0.3",
-        "hono": "^4.13.5",
-        "octokit": "^5.0.1",
+        "hono": "^4.13.13",
+        "octokit": "^5.0.5",
         "remark-mdx": "^3.1.1",
         "remark-parse": "^11.0.0",
         "unified": "^11.0.5",
-        "uuid": "^11.1.0"
+        "uuid": "^14.0.3"
     },
     "peerDependencies": {
-        "@mdxeditor/editor": "^3",
+        "@mdxeditor/editor": "^4",
         "@mdxeditor/gurx": "^1.2.4",
         "react": ">=18",
-        "react-dom": ">=18"
+        "react-dom": ">=18",
+        "lexical": "^0.48.0"
     },
     "peerDependenciesMeta": {
         "@mdxeditor/editor": {
@@ -81,22 +82,28 @@
         },
         "react-dom": {
             "optional": true
+        },
+        "lexical": {
+            "optional": true
+        },
+        "@mdxeditor/gurx": {
+            "optional": true
         }
     },
     "devDependencies": {
-        "@biomejs/biome": "2.3.9",
-        "@mdxeditor/editor": "^3.32.3",
+        "@biomejs/biome": "2.5.15",
+        "@mdxeditor/editor": "^4.3.3",
         "@mdxeditor/gurx": "^1.2.4",
-        "@types/node": "^20",
-        "@types/react": "^19",
-        "@types/react-dom": "^19",
-        "lexical": "^0.34.0",
-        "react": "^19",
-        "react-dom": "^19",
-        "tsup": "^8.3.5",
-        "typescript": "^5.7.2"
+        "@types/node": "^26.6.5",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "lexical": "^0.48.0",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "tsdown": "^0.23.1",
+        "typescript": "^7.0.2"
     },
     "engines": {
-        "node": ">=18"
+        "node": ">=26.12.0"
     }
 }

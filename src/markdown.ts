@@ -9,7 +9,7 @@
  *     `parseImageComponentAttributes`: build and scan the
  *     `<Image imageId="<uuid>" blurHash64=".." width=".." height=".." alt=".." />`
  *     MDX form (editors insert it, save flows use the id list to know which
- *     pending uploads to commit). Parsing is AST-based (remark-mdx), so code
+ *     pending images to commit). Parsing is AST-based (remark-mdx), so code
  *     blocks and attribute forms are handled correctly. The prop names match
  *     `hagaki/react`'s `<Image>` — MDX renderers can just pass
  *     `components={{ Image }}`.

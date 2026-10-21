@@ -6,8 +6,8 @@ import type { ImagePathConfig } from "hagaki/markdown";
  * `content/article/<uuid>/assets/` and are referenced in the markdown body
  * as `/article/<uuid>/assets/<file>`.
  *
- * Used by the upload flow (writes these paths) and by the save flow (diffs
- * them to figure out which blobs to delete).
+ * Used by the save flow: new images are committed under these paths, and
+ * diffing the old and new body tells which image files to delete.
  */
 export function imagePathsFor(uuid: string): ImagePathConfig {
     return {
