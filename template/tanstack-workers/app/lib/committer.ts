@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
+import type { Committer } from "@morinoparty/hagaki";
+import { committerFromBetterAuth } from "@morinoparty/hagaki/auth/better-auth";
 import { getRequest } from "@tanstack/react-start/server";
-import type { Committer } from "hagaki";
-import { committerFromBetterAuth } from "hagaki/auth/better-auth";
 import { getAuth } from "./auth";
 
 /**

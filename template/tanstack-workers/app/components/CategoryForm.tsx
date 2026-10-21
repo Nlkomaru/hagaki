@@ -1,6 +1,6 @@
+import type { WikiCategory } from "@morinoparty/hagaki";
+import { toUrlSlug } from "@morinoparty/hagaki";
 import { Link, useRouter } from "@tanstack/react-router";
-import type { WikiCategory } from "hagaki";
-import { toUrlSlug } from "hagaki";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";

@@ -1,11 +1,11 @@
-import { resolveCdnUrl } from "hagaki";
-import type { ImageComponentAttrs } from "hagaki/markdown";
+import { resolveCdnUrl } from "@morinoparty/hagaki";
+import type { ImageComponentAttrs } from "@morinoparty/hagaki/markdown";
 import {
     collectPendingImages,
     findUncommittedImageIds,
     PendingImageError,
     startPending,
-} from "hagaki/pending-images";
+} from "@morinoparty/hagaki/pending-images";
 import { bytesToBase64 } from "./base64";
 import { imagePathsFor } from "./image-paths";
 

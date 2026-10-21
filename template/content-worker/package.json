@@ -12,7 +12,7 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-        "hagaki": "workspace:*"
+        "@morinoparty/hagaki": "workspace:*"
     },
     "devDependencies": {
         "cf": "1.0.0-beta.20",

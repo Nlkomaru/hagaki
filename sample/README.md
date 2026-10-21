@@ -254,7 +254,7 @@ git コミット履歴のマージは**ここで焼き込む**ので、消費側
 
 ### `slug-index.json` — slug → uuid マップ
 
-[issue #4](https://github.com/Nlkomaru/hagaki/issues/4) 対応。`getPostBySlug` が
+[issue #4](https://github.com/morinoparty/hagaki/issues/4) 対応。`getPostBySlug` が
 manifest 全件の線形探索をやめて O(1) で uuid を引けるようにする。
 `draft: true` の記事は載らない（この値集合が配信 worker の公開判定の正にもなる）。
 

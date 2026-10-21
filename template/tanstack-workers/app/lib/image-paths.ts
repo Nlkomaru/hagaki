@@ -1,4 +1,4 @@
-import type { ImagePathConfig } from "hagaki/markdown";
+import type { ImagePathConfig } from "@morinoparty/hagaki/markdown";
 
 /**
  * Per-article image locations. Each post owns a directory

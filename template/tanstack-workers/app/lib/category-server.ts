@@ -1,5 +1,5 @@
+import type { WikiCategory } from "@morinoparty/hagaki";
 import { createServerFn } from "@tanstack/react-start";
-import type { WikiCategory } from "hagaki";
 import { getHagakiClient } from "./hagaki";
 
 export const listCategoriesFn = createServerFn({ method: "GET" }).handler(

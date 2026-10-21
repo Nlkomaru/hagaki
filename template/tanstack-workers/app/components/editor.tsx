@@ -1,6 +1,6 @@
 "use client";
-import { HagakiEditor } from "hagaki/editor";
-import type { ImageComponentAttrs } from "hagaki/markdown";
+import { HagakiEditor } from "@morinoparty/hagaki/editor";
+import type { ImageComponentAttrs } from "@morinoparty/hagaki/markdown";
 import { ImagePlus } from "lucide-react";
 import { editorI18n } from "./editor-i18n";
 

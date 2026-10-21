@@ -1,6 +1,6 @@
+import type { WikiPostDetail } from "@morinoparty/hagaki";
+import { validateAvifUpload } from "@morinoparty/hagaki/image";
 import { createServerFn } from "@tanstack/react-start";
-import type { WikiPostDetail } from "hagaki";
-import { validateAvifUpload } from "hagaki/image";
 import { requireSession } from "./auth-server";
 import { base64ToBytes } from "./base64";
 import { resolveCommitter } from "./committer";

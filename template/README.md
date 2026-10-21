@@ -30,4 +30,4 @@ pnpm --filter hagaki-template-tanstack-workers dev
 ```
 
 deploy の手順はそれぞれの README を参照。外に持ち出すときは
-`"hagaki": "workspace:*"` を `"hagaki": "github:Nlkomaru/hagaki#dist"` に書き換える。
+`"@morinoparty/hagaki": "workspace:*"` を公開版 (`"^0.2.0"` など) に書き換え、`.npmrc` に `@morinoparty:registry=https://npm.pkg.github.com` を置く。

@@ -1,6 +1,6 @@
+import { toUrlSlug } from "@morinoparty/hagaki";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { toUrlSlug } from "hagaki";
 import { useState } from "react";
 import { CategoryInput } from "~/components/CategoryInput";
 import { Button } from "~/components/ui/button";

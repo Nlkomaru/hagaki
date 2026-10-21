@@ -3,8 +3,8 @@ import {
     isImageComponentNode,
     type MdxJsxAttributeLike,
     parseImageComponentAttributes,
-} from "hagaki/markdown";
-import { HagakiImageConfig, Image } from "hagaki/react";
+} from "@morinoparty/hagaki/markdown";
+import { HagakiImageConfig, Image } from "@morinoparty/hagaki/react";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";

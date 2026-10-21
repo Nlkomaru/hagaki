@@ -1,4 +1,4 @@
-import type { WikiCategory } from "hagaki";
+import type { WikiCategory } from "@morinoparty/hagaki";
 import { useId } from "react";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";

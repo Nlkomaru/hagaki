@@ -1,0 +1,54 @@
+name: Publish package
+
+# GitHub Release を publish したときだけ @morinoparty/hagaki を GitHub Packages に公開する。
+# version はリリースのタグ (v0.2.0) から決める。package.json の version は据え置き。
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      # GitHub Packages レジストリに向ける (@morinoparty スコープ用)
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@morinoparty"
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run check:ci
+      - run: pnpm run build
+
+      - name: Set version from the release tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          if [ -z "$VERSION" ]; then
+            echo "::error::release tag is empty"
+            exit 1
+          fi
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.version = process.argv[1];
+            fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
+          ' "$VERSION"
+          echo "publishing @morinoparty/hagaki@$VERSION"
+
+      - name: Publish to GitHub Packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm publish --no-git-checks

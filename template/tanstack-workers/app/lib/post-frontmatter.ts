@@ -1,5 +1,5 @@
-import type { WikiPostDetail } from "hagaki";
-import { toUrlSlug } from "hagaki";
+import type { WikiPostDetail } from "@morinoparty/hagaki";
+import { toUrlSlug } from "@morinoparty/hagaki";
 import { v4 as uuidv4 } from "uuid";
 
 /**

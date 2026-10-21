@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { createHagakiClient, type HagakiClient } from "hagaki";
+import { createHagakiClient, type HagakiClient } from "@morinoparty/hagaki";
 import { getOptionalStringEnv } from "./server-env";
 
 let cached: HagakiClient | null = null;

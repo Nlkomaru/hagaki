@@ -15,11 +15,18 @@ deploy するものではなく、ライブラリとして使う。利用例は�
 
 ## Install
 
-main への push ごとに、ビルド済みの `dist` ブランチを Actions が公開している
-(`.github/workflows/publish-dist.yml`)。消費側は git 依存で入れる。
+GitHub Packages に `@morinoparty/hagaki` として公開している。GitHub Release を
+publish すると、そのタグ (`v0.2.0` など) の版を Actions が公開する
+(`.github/workflows/publish.yml`)。
+
+GitHub Packages の npm レジストリは公開パッケージでも認証が要るので、`.npmrc` に
+スコープとトークン (`read:packages`) を設定してから入れる。
 
 ```sh
-pnpm add github:Nlkomaru/hagaki#dist
+# .npmrc
+# @morinoparty:registry=https://npm.pkg.github.com
+# //npm.pkg.github.com/:_authToken=<read:packages を持つトークン>
+pnpm add @morinoparty/hagaki
 # エディタを使う場合 (lexical は @mdxeditor/editor と同じ版にそろえる)
 pnpm add @mdxeditor/editor @mdxeditor/gurx lexical@^0.48.0 react react-dom
 ```
@@ -31,7 +38,7 @@ pnpm add @mdxeditor/editor @mdxeditor/gurx lexical@^0.48.0 react react-dom
 ### 1. Client を作る
 
 ```ts
-import { createHagakiClient } from "hagaki";
+import { createHagakiClient } from "@morinoparty/hagaki";
 
 const hagaki = createHagakiClient({
   github: {
@@ -54,7 +61,7 @@ const post = await hagaki.posts.getBySlug("hello-world");
 ### 2. 記事を保存する
 
 ```ts
-import { committerFromBetterAuth } from "hagaki/auth/better-auth";
+import { committerFromBetterAuth } from "@morinoparty/hagaki/auth/better-auth";
 
 const committer = committerFromBetterAuth(session, {
   defaultEmail: "uuid+player@morino.party",
@@ -71,8 +78,8 @@ console.log(result.commitSha, result.commitUrl);
 
 ```tsx
 "use client";
-import { HagakiEditor } from "hagaki/editor";
-import { getPending, startPending } from "hagaki/pending-images";
+import { HagakiEditor } from "@morinoparty/hagaki/editor";
+import { getPending, startPending } from "@morinoparty/hagaki/pending-images";
 import "@mdxeditor/editor/style.css";
 
 export function MyEditor(props: {
@@ -125,7 +132,7 @@ MDXEditor はクライアント専用なので、`lazy(() => import(...))` な�
      findUncommittedImageIds,
      PendingImageError,
      removePending,
-   } from "hagaki/pending-images";
+   } from "@morinoparty/hagaki/pending-images";
 
    // 本文が参照していて、まだコミットされていない画像 (サムネイル等の id は自分で足す)
    const ids = findUncommittedImageIds(body, committedBody);
@@ -155,7 +162,7 @@ MDXEditor はクライアント専用なので、`lazy(() => import(...))` な�
    (`../../.github/workflows/x.yml` のような名前で記事の外へ書き込まれるのを防ぐ)。
 
    ```ts
-   import { validateAvifUpload } from "hagaki/image";
+   import { validateAvifUpload } from "@morinoparty/hagaki/image";
 
    const UUID_REGEX = /^[a-f0-9-]{36}$/i;
    if (!UUID_REGEX.test(uuid)) throw new Error("invalid post uuid");
@@ -245,7 +252,7 @@ Workers Static Assets の前段に置く Hono アプリ。下書きの遮断だ�
 
 ```ts
 // src/index.ts
-import { createContentApp } from "hagaki/content-worker";
+import { createContentApp } from "@morinoparty/hagaki/content-worker";
 export default createContentApp();
 ```
 

@@ -1,6 +1,5 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import type { WikiPostDetail } from "hagaki";
-import { diffRemovedImagePaths } from "hagaki/markdown";
+import type { WikiPostDetail } from "@morinoparty/hagaki";
+import { diffRemovedImagePaths } from "@morinoparty/hagaki/markdown";
 import {
     getPending,
     hasActive,
@@ -8,7 +7,8 @@ import {
     removePending,
     subscribe as subscribePending,
     sweepOrphanedErrors,
-} from "hagaki/pending-images";
+} from "@morinoparty/hagaki/pending-images";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { CategoryInput } from "~/components/CategoryInput";
 import { Badge } from "~/components/ui/badge";
