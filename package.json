@@ -47,21 +47,22 @@
         "hagaki": "./dist/cli.js"
     },
     "dependencies": {
-        "@jsquash/avif": "^2.0.0",
+        "@jsquash/avif": "^2.1.1",
         "blurhash": "^2.0.5",
         "gray-matter": "^4.0.3",
-        "hono": "^4.13.5",
-        "octokit": "^5.0.1",
+        "hono": "^4.13.13",
+        "octokit": "^5.0.5",
         "remark-mdx": "^3.1.1",
         "remark-parse": "^11.0.0",
         "unified": "^11.0.5",
-        "uuid": "^11.1.0"
+        "uuid": "^14.0.3"
     },
     "peerDependencies": {
-        "@mdxeditor/editor": "^3",
+        "@mdxeditor/editor": "^4",
         "@mdxeditor/gurx": "^1.2.4",
         "react": ">=18",
-        "react-dom": ">=18"
+        "react-dom": ">=18",
+        "lexical": "^0.48.0"
     },
     "peerDependenciesMeta": {
         "@mdxeditor/editor": {
@@ -72,9 +73,15 @@
         },
         "react-dom": {
             "optional": true
+        },
+        "lexical": {
+            "optional": true
+        },
+        "@mdxeditor/gurx": {
+            "optional": true
         }
     },
     "engines": {
-        "node": ">=18"
+        "node": ">=26.12.0"
     }
 }

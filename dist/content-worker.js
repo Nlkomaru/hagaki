@@ -1,39 +1,66 @@
-import { Hono } from 'hono';
-
-// src/content-worker/index.ts
-var PUBLISHED_TTL_MS = 6e4;
-var publishedCache = null;
+import { Hono } from "hono";
+//#region src/content-worker/index.ts
+/** How long a fetched publish allow-list stays valid, per isolate. */
+const PUBLISHED_TTL_MS = 6e4;
+let publishedCache = null;
+/**
+* The set of published article uuids = the values of the generated
+* `slug-index.json` (drafts never get a slug-index entry). Read through the
+* ASSETS binding so the worker sees exactly the deployed generation.
+*
+* Fail-closed: when the index can't be read, nothing under `article/` is
+* served — a missing generate step must not expose drafts.
+*/
 async function publishedUuids(assets, requestUrl) {
-  const now = Date.now();
-  if (publishedCache && now - publishedCache.fetchedAt < PUBLISHED_TTL_MS) {
-    return publishedCache.uuids;
-  }
-  try {
-    const url = new URL("/slug-index.json", requestUrl);
-    const res = await assets.fetch(new Request(url));
-    if (!res.ok) return null;
-    const index = await res.json();
-    const uuids = new Set(Object.values(index));
-    publishedCache = { uuids, fetchedAt: now };
-    return uuids;
-  } catch {
-    return null;
-  }
+	const now = Date.now();
+	if (publishedCache && now - publishedCache.fetchedAt < PUBLISHED_TTL_MS) return publishedCache.uuids;
+	try {
+		const url = new URL("/slug-index.json", requestUrl);
+		const res = await assets.fetch(new Request(url));
+		if (!res.ok) return null;
+		const index = await res.json();
+		const uuids = new Set(Object.values(index));
+		publishedCache = {
+			uuids,
+			fetchedAt: now
+		};
+		return uuids;
+	} catch {
+		return null;
+	}
 }
+/**
+* Content-serving worker for a hagaki content repository, meant to sit in
+* front of a Workers Static Assets deployment of the `content/` directory
+* with `runWorkerFirst` covering `/article/*`:
+*
+* ```ts
+* // cloudflare.config.ts (+ `assetsDirectory: "./content"` in
+* // wrangler.config.ts)
+* worker: {
+*     entrypoint: "src/index.ts",
+*     assets: { runWorkerFirst: ["/article/*"] },
+*     env: { ASSETS: bindings.assets() },
+* }
+* ```
+*
+* Requests for a draft article's files (`article/<uuid>/index.mdx`,
+* `info.json`, `assets/*`) return 404; everything else passes through to the
+* static assets. Draft articles are only reachable through the repository.
+*/
 function createContentApp() {
-  const app = new Hono();
-  const serveArticle = async (c) => {
-    const uuid = c.req.param("uuid");
-    const published = await publishedUuids(c.env.ASSETS, c.req.url);
-    if (!published?.has(uuid)) return c.notFound();
-    return c.env.ASSETS.fetch(c.req.raw);
-  };
-  app.get("/article/:uuid", serveArticle);
-  app.get("/article/:uuid/*", serveArticle);
-  app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
-  return app;
+	const app = new Hono();
+	const serveArticle = async (c) => {
+		const uuid = c.req.param("uuid");
+		if (!(await publishedUuids(c.env.ASSETS, c.req.url))?.has(uuid)) return c.notFound();
+		return c.env.ASSETS.fetch(c.req.raw);
+	};
+	app.get("/article/:uuid", serveArticle);
+	app.get("/article/:uuid/*", serveArticle);
+	app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
+	return app;
 }
-
+//#endregion
 export { createContentApp };
-//# sourceMappingURL=content-worker.js.map
+
 //# sourceMappingURL=content-worker.js.map

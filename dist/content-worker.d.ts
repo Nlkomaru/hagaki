@@ -1,27 +1,27 @@
-import { Hono } from 'hono';
-
+import { Hono } from "hono";
+//#region src/content-worker/index.d.ts
 /**
  * The Workers Assets binding — structurally typed so consumers don't need
  * `@cloudflare/workers-types` to build.
  */
-interface AssetsFetcher {
-    fetch(request: Request): Promise<Response>;
+export interface AssetsFetcher {
+  fetch(request: Request): Promise<Response>;
 }
-interface ContentWorkerEnv {
-    ASSETS: AssetsFetcher;
+export interface ContentWorkerEnv {
+  ASSETS: AssetsFetcher;
 }
 /**
  * Content-serving worker for a hagaki content repository, meant to sit in
- * front of a Workers Assets deployment of the `content/` directory with
- * `run_worker_first` covering `/article/*`:
+ * front of a Workers Static Assets deployment of the `content/` directory
+ * with `runWorkerFirst` covering `/article/*`:
  *
- * ```jsonc
- * // wrangler.jsonc
- * "main": "src/index.ts",
- * "assets": {
- *     "directory": "./content",
- *     "binding": "ASSETS",
- *     "run_worker_first": ["/article/*"]
+ * ```ts
+ * // cloudflare.config.ts (+ `assetsDirectory: "./content"` in
+ * // wrangler.config.ts)
+ * worker: {
+ *     entrypoint: "src/index.ts",
+ *     assets: { runWorkerFirst: ["/article/*"] },
+ *     env: { ASSETS: bindings.assets() },
  * }
  * ```
  *
@@ -29,8 +29,8 @@ interface ContentWorkerEnv {
  * `info.json`, `assets/*`) return 404; everything else passes through to the
  * static assets. Draft articles are only reachable through the repository.
  */
-declare function createContentApp(): Hono<{
-    Bindings: ContentWorkerEnv;
+export declare function createContentApp(): Hono<{
+  Bindings: ContentWorkerEnv;
 }>;
-
-export { type AssetsFetcher, type ContentWorkerEnv, createContentApp };
+//#endregion
+//# sourceMappingURL=content-worker.d.ts.map

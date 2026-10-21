@@ -1,5 +1,5 @@
-export { A as AnalyzedImage, I as ImageProcessingError, M as MAX_AVIF_BYTES, P as ProcessImageOptions, a as ProcessedImage, b as analyzeImage, e as encodeAnalyzedImage, p as processImage } from './pipeline-6kF6pdR8.js';
-
+import { a as ProcessedImage, c as processImage, i as ProcessImageOptions, n as ImageProcessingError, o as analyzeImage, r as MAX_AVIF_BYTES, s as encodeAnalyzedImage, t as AnalyzedImage } from "./pipeline-BsBTLj-D.js";
+//#region src/image/validation.d.ts
 /**
  * Lightweight AVIF format / size validation. Pure JS — safe to call from any
  * runtime (browser, Cloudflare Workers, Node).
@@ -8,15 +8,16 @@ export { A as AnalyzedImage, I as ImageProcessingError, M as MAX_AVIF_BYTES, P a
  * Confirm the bytes start with an ISO base media file `ftyp` box whose major
  * brand or compatible brand is "avif" (or "avis").
  */
-declare function isAvif(bytes: Uint8Array): boolean;
+export declare function isAvif(bytes: Uint8Array): boolean;
 interface ImageValidationOptions {
-    /** Maximum allowed byte length. Defaults to 500 KB. */
-    maxBytes?: number;
+  /** Maximum allowed byte length. Defaults to 500 KB. */
+  maxBytes?: number;
 }
-declare class ImageValidationError extends Error {
-    readonly code: "size" | "format";
-    constructor(message: string, code: "size" | "format");
+export declare class ImageValidationError extends Error {
+  readonly code: "size" | "format";
+  constructor(message: string, code: "size" | "format");
 }
-declare function validateAvifUpload(bytes: Uint8Array, options?: ImageValidationOptions): void;
-
-export { ImageValidationError, type ImageValidationOptions, isAvif, validateAvifUpload };
+export declare function validateAvifUpload(bytes: Uint8Array, options?: ImageValidationOptions): void;
+//#endregion
+export { type AnalyzedImage, ImageProcessingError, type ImageValidationOptions, MAX_AVIF_BYTES, type ProcessImageOptions, type ProcessedImage, analyzeImage, encodeAnalyzedImage, processImage };
+//# sourceMappingURL=image.d.ts.map

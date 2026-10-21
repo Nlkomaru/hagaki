@@ -1,5 +1,6 @@
+//#region src/markdown/image-jsx.d.ts
 /**
- * MDX `<Image />` representation of an uploaded image:
+ * MDX `<Image />` representation of an article image:
  *
  *   <Image imageId="<uuid>" blurHash64="<base64>" width="1920" height="1080" alt="…" />
  *
@@ -15,16 +16,16 @@
  */
 declare const IMAGE_COMPONENT_NAME = "Image";
 interface ImageComponentAttrs {
-    /** uuid — doubles as the `<id>.avif` file name in the repo. */
-    id: string;
-    /**
-     * Raw blurhash. Serialized as the base64 `blurHash64` attribute (raw
-     * base83 contains `{`/`}` which JSX attributes can't carry safely).
-     */
-    blurhash?: string;
-    width?: number;
-    height?: number;
-    alt?: string;
+  /** uuid — doubles as the `<id>.avif` file name in the repo. */
+  id: string;
+  /**
+   * Raw blurhash. Serialized as the base64 `blurHash64` attribute (raw
+   * base83 contains `{`/`}` which JSX attributes can't carry safely).
+   */
+  blurhash?: string;
+  width?: number;
+  height?: number;
+  alt?: string;
 }
 /**
  * Generate the `<Image … />` MDX for an image. All attribute values are
@@ -36,16 +37,16 @@ interface ImageComponentAttrs {
 declare function imageComponentMarkdown(attrs: ImageComponentAttrs): string;
 /** mdast-util-mdx-jsx attribute node (structural — avoids the dep on types). */
 interface MdxJsxAttributeLike {
+  type?: string;
+  name?: string | null;
+  value?: string | null | undefined | {
     type?: string;
-    name?: string | null;
-    value?: string | null | undefined | {
-        type?: string;
-        value?: string | null;
-    };
+    value?: string | null;
+  };
 }
 declare function isImageComponentNode(node: {
-    type: string;
-    name?: string | null;
+  type: string;
+  name?: string | null;
 }): boolean;
 /**
  * Validate and normalize the attributes of a parsed `<Image />` mdxJsx node.
@@ -62,5 +63,6 @@ declare function parseImageComponentAttributes(attributes: MdxJsxAttributeLike[]
  * are handled uniformly.
  */
 declare function extractImageComponentIds(markdown: string): string[];
-
-export { type ImageComponentAttrs as I, type MdxJsxAttributeLike as M, IMAGE_COMPONENT_NAME as a, isImageComponentNode as b, extractImageComponentIds as e, imageComponentMarkdown as i, parseImageComponentAttributes as p };
+//#endregion
+export { imageComponentMarkdown as a, extractImageComponentIds as i, ImageComponentAttrs as n, isImageComponentNode as o, MdxJsxAttributeLike as r, parseImageComponentAttributes as s, IMAGE_COMPONENT_NAME as t };
+//# sourceMappingURL=image-jsx-BDL3Y67c.d.ts.map

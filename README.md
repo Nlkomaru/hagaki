@@ -1,18 +1,30 @@
 # hagaki
 
-GitHub をストレージとして使う、headless なマークダウンエディタ + コンテンツ API ライブラリ。
+GitHub をストレージにする、headless なマークダウンエディタとコンテンツ API のライブラリ。
 
-- **コア API** — Octokit ベースの GitHub 読み書き、CDN コンテンツ取得、コミット情報取得を一つの client にまとめる。Next.js / 認証フレームワーク非依存。
-- **エディタ** — `@mdxeditor/editor` を薄くラップした headless な React コンポーネント。スタイルは持ち込まず、`className` で完全制御。
-- **認証アダプタ** — better-auth など任意のセッションから `Committer` を生成する小さなヘルパ。
+- **コア API**: Octokit で GitHub を読み書きし、配信済みコンテンツの取得とコミット情報の取得もまとめた client。フレームワークや認証方式には依存しない。
+- **エディタ**: `@mdxeditor/editor` を薄く包んだ headless な React コンポーネント。スタイルは持たず、`className` で指定する。
+- **画像**: ブラウザで AVIF にエンコードし、保存するまではメモリに置いておく (`hagaki/pending-images`)。保存時に本文と同じコミットへ入れる。
+- **CLI / 配信 worker**: コンテンツリポジトリの manifest を生成する `hagaki generate` と、下書きを配信しない Hono アプリ。
+
+deploy するものではなく、ライブラリとして使う。利用例は次のとおり。
+
+- [Nlkomaru/hagaki-content](https://github.com/Nlkomaru/hagaki-content): サンプルのコンテンツリポジトリ
+- [morinoparty/wiki-content](https://github.com/morinoparty/wiki-content): wiki のコンテンツ (Worker `wiki-content`)
+- [morinoparty/wiki-frontend](https://github.com/morinoparty/wiki-frontend): wiki の編集・閲覧 UI (Worker `wiki-frontend`)
 
 ## Install
 
+main への push ごとに、ビルド済みの `dist` ブランチを Actions が公開している
+(`.github/workflows/publish-dist.yml`)。消費側は git 依存で入れる。
+
 ```sh
-pnpm add hagaki
-# React のエディタを使う場合
-pnpm add @mdxeditor/editor react react-dom
+pnpm add github:Nlkomaru/hagaki#dist
+# エディタを使う場合 (lexical は @mdxeditor/editor と同じ版にそろえる)
+pnpm add @mdxeditor/editor @mdxeditor/gurx lexical@^0.48.0 react react-dom
 ```
+
+動作環境は Node.js 26.12 以上。
 
 ## Quick start
 
@@ -24,13 +36,14 @@ import { createHagakiClient } from "hagaki";
 const hagaki = createHagakiClient({
   github: {
     owner: "morinoparty",
-    repo: "wiki-contentdev",
+    repo: "wiki-content",
     branch: "main",
     contentPath: "content/article", // 各記事は content/article/<uuid>/index.mdx
-    auth: process.env.GITHUB_TOKEN!, // string でも () => Promise<string> でも可
+    auth: env.HAGAKI_GITHUB_TOKEN, // string でも () => Promise<string> でも可
   },
   content: {
-    cdnBaseUrl: "https://content.wiki.morino.party",
+    // コンテンツ Worker の配信 URL (<subdomain> はアカウントの workers.dev)
+    cdnBaseUrl: "https://wiki-content.<subdomain>.workers.dev",
   },
 });
 
@@ -43,7 +56,6 @@ const post = await hagaki.posts.getBySlug("hello-world");
 ```ts
 import { committerFromBetterAuth } from "hagaki/auth/better-auth";
 
-const session = await auth(); // better-auth の session
 const committer = committerFromBetterAuth(session, {
   defaultEmail: "uuid+player@morino.party",
 });
@@ -59,59 +71,145 @@ console.log(result.commitSha, result.commitUrl);
 
 ```tsx
 "use client";
-import { HagakiEditor, defaultPlugins } from "hagaki/react";
+import { HagakiEditor } from "hagaki/editor";
+import { getPending, startPending } from "hagaki/pending-images";
 import "@mdxeditor/editor/style.css";
 
-export function MyEditor({ markdown, onChange }: { markdown: string; onChange: (m: string) => void }) {
+export function MyEditor(props: {
+  markdown: string;
+  onChange: (m: string) => void;
+  committedUrl: (imageId: string) => string;
+}) {
   return (
     <HagakiEditor
-      markdown={markdown}
-      onChange={onChange}
-      plugins={defaultPlugins({
-        imageUploadHandler: async (file) => upload(file),
-        imagePreviewHandler: async (src) => `https://cdn.example.com/${src}`,
-      })}
-      contentEditableClassName="my-prose"
-    />
+      markdown={props.markdown}
+      onChange={props.onChange}
+      onInsertImage={async (file) => {
+        const entry = await startPending({ file });
+        return { id: entry.id, blurhash: entry.blurhash, width: entry.width, height: entry.height, alt: "" };
+      }}
+      imagePreviewUrlFor={(id) => getPending(id)?.previewUrl ?? props.committedUrl(id)}
+    >
+      <HagakiEditor.Toolbar>
+        <HagakiEditor.UndoRedo />
+        <HagakiEditor.InsertImage.ComponentButton />
+      </HagakiEditor.Toolbar>
+      <HagakiEditor.Content className="my-prose" />
+    </HagakiEditor>
   );
 }
 ```
 
-Next.js では `dynamic(() => import("./MyEditor"), { ssr: false })` で読み込むこと（MDXEditor は client only）。
+MDXEditor はクライアント専用なので、`lazy(() => import(...))` などで遅延読み込みする。
+
+## 画像 (`hagaki/pending-images`)
+
+エディタに入れた画像は、保存するまでどこにもアップロードしない。
+ブラウザで AVIF にエンコードした `Blob` をタブのメモリに保持し、保存時に
+本文と一緒にサーバへ送って 1 コミットにまとめる。一時置き場 (R2 など) は要らない。
+
+| 状態 | 意味 |
+|---|---|
+| `encoding` | blurhash と寸法は確定済みで、AVIF エンコード中。エディタはぼかしのプレースホルダを出す |
+| `ready` | `blob` と `previewUrl` (`blob:` の object URL) がある。コミットできる |
+| `error` | エンコードに失敗した。`error` に原因が入る |
+
+1. **挿入**: `startPending({ file })` は blurhash が出た時点で resolve するので、すぐに `<Image imageId="…" />` を挿入できる。エンコードは裏で続く。
+2. **プレビュー**: `imagePreviewUrlFor` で `getPending(id)?.previewUrl` を返し、なければコミット済みの URL を返す。
+3. **保存ボタンの制御**: `subscribe(fn)` と `hasActive()` / `hasErrors()` を使う。エディタの `onChange` で `sweepOrphanedErrors(body)` を呼ぶと、本文から消えた失敗画像の分のエラーが残らない。
+4. **保存 (ブラウザ側)**:
+
+   ```ts
+   import {
+     collectPendingImages,
+     findUncommittedImageIds,
+     PendingImageError,
+     removePending,
+   } from "hagaki/pending-images";
+
+   // 本文が参照していて、まだコミットされていない画像 (サムネイル等の id は自分で足す)
+   const ids = findUncommittedImageIds(body, committedBody);
+   // エンコード完了を待って { imageId, blob }[] を得る。失敗した画像や
+   // リロードで失われた画像があると PendingImageError (failedIds / missingIds) を投げる
+   const images = await collectPendingImages(ids);
+
+   const form = new FormData();
+   form.set("body", body);
+   for (const { imageId, blob } of images) {
+     form.append("imageId", imageId);
+     form.append("image", blob);
+   }
+   await savePost(form); // Server Action / API など
+
+   // 成功後: 先に committedBody を更新して表示をコミット済み URL へ切り替え、
+   // それからコミットに入れた分だけ破棄する (object URL も revoke される)。
+   // clearAll() だと、保存中に挿入された画像まで消えてしまう。
+   setCommittedBody(body);
+   for (const { imageId } of images) removePending(imageId);
+   ```
+
+5. **保存 (サーバ側)**: 受け取ったバイト列を `validateAvifUpload` (`hagaki/image`) で確かめ、本文と一緒に `posts.save` の `files` (または `commits.commitFiles`) に渡す。`CommitFile.content` は `Uint8Array` / `ArrayBuffer` / `Blob` (`FormData` の `File` もそのまま渡せる) / 文字列を受け付ける。JSON で base64 を受け取った場合は `encoding: "base64"` を付ける。
+
+   リポジトリ上のパスはサーバ側で組み立てる。クライアントが送るファイル名や id は
+   信用せず、記事の `uuid` と各 `imageId` を UUID の形か確かめてから使う
+   (`../../.github/workflows/x.yml` のような名前で記事の外へ書き込まれるのを防ぐ)。
+
+   ```ts
+   import { validateAvifUpload } from "hagaki/image";
+
+   const UUID_REGEX = /^[a-f0-9-]{36}$/i;
+   if (!UUID_REGEX.test(uuid)) throw new Error("invalid post uuid");
+
+   const ids = form.getAll("imageId");
+   const blobs = form.getAll("image");
+   if (ids.length !== blobs.length) throw new Error("imageId / image mismatch");
+
+   const files = [];
+   for (const [i, imageId] of ids.entries()) {
+     const blob = blobs[i];
+     if (typeof imageId !== "string" || !UUID_REGEX.test(imageId)) {
+       throw new Error("invalid image id");
+     }
+     if (!(blob instanceof Blob)) throw new Error("image must be a file");
+     const bytes = new Uint8Array(await blob.arrayBuffer());
+     validateAvifUpload(bytes); // 500 KB 以下の AVIF か
+     // パスは id から作る。file.name は使わない
+     files.push({ path: `content/article/${uuid}/assets/${imageId}.avif`, content: bytes });
+   }
+   await hagaki.posts.save(post, { committer, files, deletePaths });
+   ```
+
+画像はタブのメモリにしかないので、保存前にリロードすると失われる
+(`collectPendingImages` が `missingIds` で知らせる)。挿入し直してもらう。
 
 ## Client API
 
-`createHagakiClient` が返す client の全体像。読み取りは「配信済み (CDN)」と
-「リポジトリ (GitHub)」の 2 系統がある — 一覧や公開ページは CDN、エディタの
-ように**まだデプロイされていないコミットを見たい**ところはリポジトリを読む。
+`createHagakiClient` が返す client の一覧。読み取り先は「配信済み (CDN)」と
+「リポジトリ (GitHub)」の 2 つ。一覧や公開ページは CDN を読み、エディタのように
+**まだデプロイされていないコミットを見たい**ところはリポジトリを読む。
 
 | API | 読み先 | 内容 |
 |---|---|---|
 | `posts.list(options?)` | CDN | `article.json` の記事一覧。`sortBy: created \| updated \| title` |
-| `posts.getBySlug(slug)` | CDN | `slug-index.json` で uuid を引いて本文 + `info.json` |
-| `posts.getByUuid(uuid)` | CDN | 同上 (uuid 直指定) |
-| `posts.getFromRepo(uuid, { ref })` | GitHub | リポジトリ上の `index.mdx`。`ref` で過去リビジョン |
-| `posts.existsInRepo(uuid)` | GitHub | 記事本体の有無 |
+| `posts.getBySlug(slug)` | CDN | `slug-index.json` で uuid を引き、本文と `info.json` を返す |
+| `posts.getByUuid(uuid)` | CDN | 同上 (uuid を直接指定) |
+| `posts.getFromRepo(uuid, { ref })` | GitHub | リポジトリ上の `index.mdx`。`ref` で過去のリビジョン |
+| `posts.existsInRepo(uuid)` | GitHub | 記事本体があるか |
+| `posts.listUuidsInRepo()` | GitHub | 下書きを含む全記事の uuid |
 | `posts.repoPaths(uuid)` | GitHub | 記事ディレクトリ配下の全パス (削除時に `deletePaths` へ渡す) |
 | `posts.history(uuid, { perPage })` | GitHub | `index.mdx` に触れたコミット (新しい順) |
 | `posts.diff(uuid, base, head)` | GitHub | 2 コミット間の本文の unified diff |
-| `posts.save(post, options?)` | GitHub | frontmatter + 本文を 1 コミットで保存 |
+| `posts.save(post, options?)` | GitHub | frontmatter と本文を保存。`files` / `deletePaths` を渡すと画像の追加・削除も同じコミットにする |
 | `categories.list()` | CDN | `categories.json` |
 | `files.get(path, ref?)` | GitHub | 任意ファイルの内容 (UTF-8) |
+| `files.getBinary(path, ref?)` | GitHub | 任意ファイルのバイト列 (画像など) |
 | `files.exists(path, ref?)` | GitHub | 存在確認 |
 | `files.list(path, ref?)` | GitHub | ディレクトリ 1 階層 |
 | `files.listRecursive(path, ref?)` | GitHub | 配下の全ファイルパス |
-| `commits.commitFiles(input)` | GitHub | 複数ファイル (追加/更新/削除) を 1 コミットに |
+| `commits.commitFiles(input)` | GitHub | 複数ファイルの追加・更新・削除を 1 コミットに |
 | `commits.getWithChecks(sha)` | GitHub | コミットと check runs |
 
 ```ts
-// エディタ: 配信より新しいリポジトリの状態を読む
-const draft = await hagaki.posts.getFromRepo(uuid);
-
-// 履歴と差分
-const [latest, previous] = await hagaki.posts.history(uuid, { perPage: 2 });
-const patch = await hagaki.posts.diff(uuid, previous.sha, latest.sha);
-
 // 記事を assets ごと削除する
 await hagaki.commits.commitFiles({
   deletePaths: await hagaki.posts.repoPaths(uuid),
@@ -119,19 +217,18 @@ await hagaki.commits.commitFiles({
 });
 ```
 
-認証・権限といったアプリ固有の概念は hagaki は持たない。
-コミットの著者だけ `Committer` (`hagaki/auth/better-auth` の
-`committerFromBetterAuth`) で渡す。
+認証や権限といったアプリ固有の概念は持たない。コミットの著者だけ
+`Committer` (`hagaki/auth/better-auth` の `committerFromBetterAuth`) で渡す。
 
-下書きはコンテンツフォーマットの一部（frontmatter の `draft: true`）。
-生成物の manifest / slug-index に載らず、`hagaki/content-worker` が
-`article/<uuid>/` 配下への直接アクセスを 404 にするため、リポジトリ経由
-（`posts.getFromRepo` / `posts.listUuidsInRepo`）でのみ読める。
-詳細は `sample/README.md` の「下書き」を参照。
+下書きはコンテンツフォーマットの一部 (frontmatter の `draft: true`)。
+manifest や slug-index に載らず、`hagaki/content-worker` が `article/<uuid>/`
+配下への直接アクセスを 404 にするので、リポジトリ経由
+(`posts.getFromRepo` / `posts.listUuidsInRepo`) でしか読めない。
+フォーマットの詳細は [`sample/README.md`](./sample/README.md) を参照。
 
 ## CLI
 
-コンテンツリポジトリは hagaki を依存に入れて CLI で生成物を作る:
+コンテンツリポジトリは hagaki を依存に入れ、CLI で生成物を作る。
 
 ```sh
 hagaki generate [--content-dir ./content]
@@ -141,10 +238,10 @@ hagaki generate [--content-dir ./content]
 `categories.json` を生成する。編集履歴のマージに git を使うので、
 Actions では `fetch-depth: 0` で checkout する。
 
-## 配信 worker（`hagaki/content-worker`）
+## 配信 worker (`hagaki/content-worker`)
 
-Workers Assets の前段に置く Hono アプリ。draft の遮断だけを担い、
-それ以外は静的配信にパススルーする:
+Workers Static Assets の前段に置く Hono アプリ。下書きの遮断だけを担当し、
+それ以外は静的配信にそのまま渡す。
 
 ```ts
 // src/index.ts
@@ -152,65 +249,48 @@ import { createContentApp } from "hagaki/content-worker";
 export default createContentApp();
 ```
 
-```jsonc
-// wrangler.jsonc
-"main": "src/index.ts",
-"assets": {
-    "directory": "./content",
-    "binding": "ASSETS",
-    "run_worker_first": ["/article/*"]
-}
+```ts
+// cloudflare.config.ts (assets のディレクトリは wrangler.config.ts の assetsDirectory)
+import { bindings, defineConfig } from "cf/config";
+
+export default defineConfig({
+  worker: {
+    name: "hagaki-content",
+    compatibilityDate: "2026-10-01",
+    entrypoint: "src/index.ts",
+    workersDev: true,
+    assets: { runWorkerFirst: ["/article/*"] },
+    env: { ASSETS: bindings.assets() },
+  },
+});
 ```
 
-## Markdown 機能
-
-`defaultPlugins()` で有効になっているもの / 未対応のものの一覧。
-
-### コア記法
-
-- [x] 見出し（`headingsPlugin`）
-- [x] 太字 / 斜体 / 下線（`BoldItalicUnderlineToggles`）
-- [x] 順序付き / 順序なしリスト（`listsPlugin`）
-- [x] タスクリスト（チェックボックス、`listsPlugin` 内）
-- [x] 引用（`quotePlugin`）
-- [x] 水平線（`thematicBreakPlugin`）
-- [x] リンク（`linkPlugin`）
-- [x] テーブル（`tablePlugin`）
-- [x] コードブロック（`codeBlockPlugin`、プレーン）
-- [x] Admonition（`directivesPlugin` + `AdmonitionDirectiveDescriptor`）
-- [x] Markdown ショートカット（`markdownShortcutPlugin`）
-- [x] アンドゥ / リドゥ（`UndoRedo`）
-
-### 画像
-
-- [x] 画像挿入（`imagePlugin` — `imageUploadHandler` / `imagePreviewHandler` を渡したときだけ有効）
-- [x] ドラッグ&ドロップ / クリップボード貼り付けでのアップロード（`imagePlugin` 標準）
-- [ ] GitHub への画像アップロード組み込みヘルパ（現状は呼び出し側で `imageUploadHandler` を実装する必要あり）
-- [ ] `InsertImage` ツールバーボタンの再エクスポート（現状は `@mdxeditor/editor` から直接 import する必要あり）
-
-### ツールバー
-
-- [x] `toolbarPlugin`（`toolbarContents` を渡したときだけ有効）
-- [x] 再エクスポート: `BlockTypeSelect` / `BoldItalicUnderlineToggles` / `UndoRedo`
-- [ ] 再エクスポート: `CreateLink` / `InsertImage` / `InsertTable` / `InsertThematicBreak` / `InsertCodeBlock` / `InsertAdmonition` / `ListsToggle` / `CodeToggle` 等
-- [ ] そのまま使える「全部入り」デフォルトツールバー（`defaultToolbarContents` は最小構成のみ）
-
-### 未対応の MDXEditor プラグイン
-
-- [ ] `codeMirrorPlugin`（コードブロックのシンタックスハイライト / 言語選択）
-- [ ] `frontmatterPlugin`（エディタ上での frontmatter 編集 UI）
-- [ ] `diffSourcePlugin`（リッチ / ソース / Diff の切替ビュー）
-- [ ] `linkDialogPlugin`（リンク編集ダイアログ）
-- [ ] `sandpackPlugin`（ライブコード）
-- [ ] `jsxPlugin`（MDX の JSX 埋め込み）
+一式は [`template/content-worker`](./template/content-worker) にある。
 
 ## Entry points
 
-| import path | 内容 |
-|---|---|
-| `hagaki`                  | `createHagakiClient`, 型, `toUrlSlug` ほか |
-| `hagaki/react`            | `HagakiEditor`, `defaultPlugins` |
-| `hagaki/auth/better-auth` | `committerFromBetterAuth` |
+| import path | 内容 | 実行環境 |
+|---|---|---|
+| `hagaki` | `createHagakiClient`、型、`toUrlSlug`、`resolveCdnUrl` など | どこでも |
+| `hagaki/react` | `<Image>` と `HagakiImageConfig` (SSR 可、エディタなし) | どこでも |
+| `hagaki/editor` | `HagakiEditor` とツールバー部品 | ブラウザ |
+| `hagaki/image` | AVIF エンコードと blurhash (`processImage` など)、`validateAvifUpload` | エンコードはブラウザ、検証はどこでも |
+| `hagaki/markdown` | `<Image />` の組み立て・抽出、画像パスの差分、blurhash ユーティリティ | どこでも |
+| `hagaki/pending-images` | 保存前の画像を置くメモリ上のストア | ブラウザ |
+| `hagaki/auth/better-auth` | `committerFromBetterAuth` | どこでも |
+| `hagaki/content-worker` | `createContentApp` | Workers |
+
+## 開発
+
+```sh
+pnpm install
+pnpm run typecheck
+pnpm run check      # biome (書き込みあり。CI は check:ci)
+pnpm run build      # tsdown → dist/
+```
+
+Node.js 26.12 以上 (`.node-version`) と pnpm 12 (`packageManager`) を使う。
+main に push すると、CI が typecheck と biome check を通したうえで `dist` ブランチを更新する。
 
 ## License
 
