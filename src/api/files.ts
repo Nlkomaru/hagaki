@@ -1,4 +1,5 @@
 import type { Octokit } from "octokit";
+import { playerFromCommitterName } from "../auth/index.js";
 
 /**
  * Repository reads that the CDN can't serve: the working state of a file on a
@@ -36,6 +37,8 @@ export interface PathCommit {
     message: string;
     /** Commit author name — `makeCommitter` writes `"<name> (<uuid>)"`. */
     author: string;
+    /** Player uuid recovered from {@link author}; `null` when it isn't in the convention. */
+    player: string | null;
     date: string;
 }
 
@@ -211,12 +214,16 @@ export async function listPathCommits(
             per_page: options?.perPage ?? 50,
         },
     );
-    return data.map((commit) => ({
-        sha: commit.sha,
-        message: commit.commit.message,
-        author: commit.commit.author?.name ?? "Unknown",
-        date: commit.commit.author?.date ?? "",
-    }));
+    return data.map((commit) => {
+        const author = commit.commit.author?.name ?? "Unknown";
+        return {
+            sha: commit.sha,
+            message: commit.commit.message,
+            author,
+            player: playerFromCommitterName(author),
+            date: commit.commit.author?.date ?? "",
+        };
+    });
 }
 
 /**

@@ -18,6 +18,15 @@ export interface MakeCommitterInput {
 const defaultNameFormat = (input: { id?: string; name: string }) =>
     input.id ? `${input.name} (${input.id})` : input.name;
 
+/**
+ * Recover the player id from a committer name written by {@link makeCommitter}'s
+ * default format, `"<name> (<uuid>)"`. `null` for any other name (commits made
+ * outside hagaki, or a custom `nameFormat`).
+ */
+export function playerFromCommitterName(name: string): string | null {
+    return /\(([0-9a-f-]{36})\)\s*$/i.exec(name)?.[1] ?? null;
+}
+
 export function makeCommitter(input: MakeCommitterInput): Committer {
     const email = input.email ?? input.defaultEmail;
     if (!email) {
