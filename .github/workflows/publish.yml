@@ -14,17 +14,14 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-
-      # GitHub Packages レジストリに向ける (@morinoparty スコープ用)
-      - uses: actions/setup-node@v6
+      # pnpm (package.json の packageManager) と Node (.node-version) をまとめて入れる。
+      # pnpm/action-setup の self-installer (npm 経由) を使わないので速い
+      - uses: pnpm/setup@v3
         with:
-          node-version-file: .node-version
-          cache: pnpm
-          registry-url: "https://npm.pkg.github.com"
-          scope: "@morinoparty"
+          cache: true # pnpm store を lockfile ごとにキャッシュ
+          install: false # install は下で --frozen-lockfile 付きで明示的に行う
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm run typecheck
@@ -47,6 +44,16 @@ jobs:
             fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
           ' "$VERSION"
           echo "publishing @morinoparty/hagaki@$VERSION"
+
+      # 公開先は package.json の publishConfig.registry (GitHub Packages)。
+      # 以前は setup-node の registry-url が書いていた認証設定を ~/.npmrc に書く。
+      # トークンそのものは書かず、pnpm が実行時に NODE_AUTH_TOKEN を展開する
+      - name: Configure GitHub Packages auth
+        run: |
+          {
+            echo "@morinoparty:registry=https://npm.pkg.github.com"
+            echo '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}'
+          } >> ~/.npmrc
 
       - name: Publish to GitHub Packages
         env:
