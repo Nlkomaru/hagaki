@@ -71,6 +71,15 @@ export interface WikiPostDetail extends WikiPost {
      * repository. Omitted (not `false`) on published posts.
      */
     draft?: boolean;
+    /**
+     * Minecraft player uuids the post's frontmatter lists as its editors
+     * (`editor: [uuid, uuid]`). hagaki only carries the list — what it means
+     * (e.g. "only these players may edit") is up to the app, since the core
+     * has no notion of permissions. Not to be confused with the generated
+     * `editors` ({@link EditorSummary}), which records who *did* edit.
+     * Trimmed and deduplicated; omitted (not `[]`) when empty.
+     */
+    editor?: string[];
 }
 
 /**

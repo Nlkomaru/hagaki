@@ -37,6 +37,7 @@ YAML。gray-matter（js-yaml）でシリアライズされる形（2スペース
 | `category` | string | ✓ | カテゴリの `slug` を参照 |
 | `description` | string | ✓ | 概要。空なら `''` |
 | `draft` | boolean | – | `true` で下書き。公開記事では省略（`false` は書かない） |
+| `editor` | string[] (UUID) | – | 編集者として指定する Minecraft プレイヤーの UUID の配列。空なら省略 |
 | `thumbnail` | object | – | サムネイル。無い記事では省略 |
 | `thumbnail.imageId` | string (UUID) | ✓* | `assets/<imageId>.avif` を指す。パスは uuid + imageId から導出できるので書かない |
 | `thumbnail.blurhash64` | string | ✓* | blurhash を **base64 エンコード**した文字列（下記参照） |
@@ -73,6 +74,25 @@ option:
 
 公開するときは frontmatter から `draft` を消す（`savePost` は `draft` が
 falsy なら書き出さない）。
+
+### 編集者の指定（`editor`）
+
+`editor` は、記事の編集者として指定する Minecraft プレイヤーの UUID を並べる:
+
+```yaml
+editor:
+  - 069a79f4-44e9-4726-a5be-fca90e38aaf5
+  - 853c80ef-3c37-49fd-aa49-938b674adae6
+```
+
+- 読み込み時（`parsePostMarkdown` / `parseEditorList`）は、各要素を trim し、
+  空の要素と重複を取り除く。YAML の配列だけを受け付け、カンマ区切りの文字列
+  （`editor: "uuid1, uuid2"`）などそれ以外の形は無視する。
+- 何も残らなければ省略する（`savePost` は空の配列を書き出さない）。
+- hagaki は値を運ぶだけで、権限として扱わない。「指定したプレイヤーだけが
+  編集できる」といった意味づけは利用側のアプリが決める。
+- 生成物には載らない（`info.json` / `article.json` の `editors` は git 履歴から
+  畳んだ「実際に編集した人」で、別物）。
 
 ### blurhash64
 

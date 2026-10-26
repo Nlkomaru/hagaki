@@ -121,6 +121,28 @@ function parseImportedEdits(value: unknown): ImportedEdit[] | undefined {
     return edits.length > 0 ? edits : undefined;
 }
 
+/**
+ * Normalize the frontmatter `editor` list. Only a YAML array is accepted —
+ * any other shape (including a comma-separated string) is ignored. Entries
+ * are trimmed, empties and non-strings dropped, and duplicates removed
+ * (first occurrence wins). Values are not otherwise validated or
+ * canonicalized — matching them against a player is the app's job.
+ *
+ * @returns the cleaned list, or `undefined` when nothing is left so callers
+ *   can omit the field entirely.
+ */
+export function parseEditorList(value: unknown): string[] | undefined {
+    if (!Array.isArray(value)) return undefined;
+
+    const editors = new Set<string>();
+    for (const item of value) {
+        if (typeof item !== "string") continue;
+        const trimmed = item.trim();
+        if (trimmed) editors.add(trimmed);
+    }
+    return editors.size > 0 ? [...editors] : undefined;
+}
+
 export async function listPosts(
     deps: ContentFetcherDeps,
     options?: GetAllPostsOptions,
@@ -167,6 +189,7 @@ export function parsePostMarkdown(
 ): WikiPostDetail {
     const { data, content } = matter(markdown);
     const option = parseOptionValues(data.option);
+    const editor = parseEditorList(data.editor);
     return {
         title: (data.title as string | undefined) ?? "",
         slug: (data.slug as string | undefined) ?? "",
@@ -179,6 +202,7 @@ export function parsePostMarkdown(
         modified: parseImportedEdits(data.modified),
         ...(option ? { option } : {}),
         ...(data.draft === true ? { draft: true } : {}),
+        ...(editor ? { editor } : {}),
         body: content,
     };
 }

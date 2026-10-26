@@ -231,7 +231,12 @@ await hagaki.commits.commitFiles({
 manifest や slug-index に載らず、`hagaki/content-worker` が `article/<uuid>/`
 配下への直接アクセスを 404 にするので、リポジトリ経由
 (`posts.getFromRepo` / `posts.listUuidsInRepo`) でしか読めない。
-フォーマットの詳細は [`sample/README.md`](./sample/README.md) を参照。
+
+frontmatter の `editor` (Minecraft プレイヤーの UUID の配列) は
+`WikiPostDetail.editor` として読み書きする。hagaki は値を正規化して運ぶだけで、
+編集権限として扱うかどうかは利用側が決める。同じ正規化は `parseEditorList` で使える。
+
+下書きと `editor` を含むフォーマットの詳細は [`sample/README.md`](./sample/README.md) を参照。
 
 ## CLI
 

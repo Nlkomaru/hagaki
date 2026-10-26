@@ -5,6 +5,7 @@ export type {
 } from "./api/client.js";
 export { createHagakiClient } from "./api/client.js";
 export type { ContentConfig } from "./api/content.js";
+export { parseEditorList } from "./api/content.js";
 export { summarizeEditors } from "./api/editors.js";
 export type { PathCommit, RepoEntry, RepoFile } from "./api/files.js";
 export type { SavePostOptions } from "./api/posts.js";
