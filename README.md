@@ -63,8 +63,9 @@ const post = await hagaki.posts.getBySlug("hello-world");
 ```ts
 import { committerFromBetterAuth } from "@morinoparty/hagaki/auth/better-auth";
 
+// committer 名は "<name> (<session.user.id>)" になる。この ID が履歴の userId
 const committer = committerFromBetterAuth(session, {
-  defaultEmail: "uuid+player@morino.party",
+  defaultEmail: "noreply@example.com",
 });
 
 const result = await hagaki.posts.save(post, {
@@ -204,7 +205,8 @@ MDXEditor はクライアント専用なので、`lazy(() => import(...))` な�
 | `posts.existsInRepo(uuid)` | GitHub | 記事本体があるか |
 | `posts.listUuidsInRepo()` | GitHub | 下書きを含む全記事の uuid |
 | `posts.repoPaths(uuid)` | GitHub | 記事ディレクトリ配下の全パス (削除時に `deletePaths` へ渡す) |
-| `posts.history(uuid, { perPage })` | GitHub | `index.mdx` に触れたコミット (新しい順) |
+| `posts.history(uuid, { perPage, page })` | GitHub | `index.mdx` に触れたコミット (新しい順)。`page` で古いページを読む |
+| `posts.firstCommit(uuid)` | GitHub | `index.mdx` に触れた最古のコミット (= 作成したコミット)。履歴の長さによらず最大 2 リクエスト。無ければ `null` |
 | `posts.diff(uuid, base, head)` | GitHub | 2 コミット間の本文の unified diff |
 | `posts.save(post, options?)` | GitHub | frontmatter と本文を保存。`files` / `deletePaths` を渡すと画像の追加・削除も同じコミットにする |
 | `categories.list()` | CDN | `categories.json` |
@@ -213,6 +215,7 @@ MDXEditor はクライアント専用なので、`lazy(() => import(...))` な�
 | `files.exists(path, ref?)` | GitHub | 存在確認 |
 | `files.list(path, ref?)` | GitHub | ディレクトリ 1 階層 |
 | `files.listRecursive(path, ref?)` | GitHub | 配下の全ファイルパス |
+| `files.firstCommit(path)` | GitHub | 任意パスに触れた最古のコミット |
 | `commits.commitFiles(input)` | GitHub | 複数ファイルの追加・更新・削除を 1 コミットに |
 | `commits.getWithChecks(sha)` | GitHub | コミットと check runs |
 
@@ -227,12 +230,43 @@ await hagaki.commits.commitFiles({
 認証や権限といったアプリ固有の概念は持たない。コミットの著者だけ
 `Committer` (`hagaki/auth/better-auth` の `committerFromBetterAuth`) で渡す。
 
+### ユーザー ID
+
+hagaki が扱うユーザーの識別子は、認証ライブラリが返す安定したユーザー ID
+だけである。better-auth なら `session.user.id` で、`userIdFromSession(session)`
+はその値をそのまま返す。ID の中身 (OIDC の `sub`、DB のキー、ゲームの
+アカウント ID など) は解釈しない。
+
+- `committerFromBetterAuth` は committer 名を `"<name> (<id>)"` にする
+  (`makeCommitter` の既定のフォーマット)。
+- `userIdFromCommitterName` はその末尾の括弧の中身を取り出す。フォーマットの
+  厳密な逆関数で、`makeCommitter` は括弧・空白・`<`・`>`・制御文字を含む ID を
+  拒否する。git は名前から `<` と `>` を取り除くので、これらを含む ID は
+  `git log` から同じ値で読み戻せないためである。
+  規約外の名前 (hagaki 以外からのコミット、独自の `nameFormat`) は `null` になる。
+- 履歴 (`PathCommit.userId`、`info.json` の `history[].userId`)、`article.json`
+  の `editors[].userId`、frontmatter の `modified[].userId` と `editor` は、
+  すべてこの ID で揃う。
+- DB を持たない構成では、ログインのたびに ID が変わらないよう、プロバイダの
+  ID を `session.user.id` に使う (`mapOAuthProfile` を参照)。テンプレートのように
+  `session.user.id` を使わず OIDC の `sub` を直接 committer に渡してもよい。
+  その場合は `sub` がユーザー ID になる。
+
+```ts
+import { userIdFromSession } from "@morinoparty/hagaki/auth/better-auth";
+
+const userId = userIdFromSession(session);
+const creator = (await hagaki.posts.firstCommit(uuid))?.userId ?? null;
+const mayEdit = userId !== null &&
+  (post.editor?.includes(userId) || creator === userId);
+```
+
 下書きはコンテンツフォーマットの一部 (frontmatter の `draft: true`)。
 manifest や slug-index に載らず、`hagaki/content-worker` が `article/<uuid>/`
 配下への直接アクセスを 404 にするので、リポジトリ経由
 (`posts.getFromRepo` / `posts.listUuidsInRepo`) でしか読めない。
 
-frontmatter の `editor` (Minecraft プレイヤーの UUID の配列) は
+frontmatter の `editor` (ユーザー ID の配列) は
 `WikiPostDetail.editor` として読み書きする。hagaki は値を正規化して運ぶだけで、
 編集権限として扱うかどうかは利用側が決める。同じ正規化は `parseEditorList` で使える。
 
@@ -289,8 +323,42 @@ export default defineConfig({
 | `hagaki/image` | AVIF エンコードと blurhash (`processImage` など)、`validateAvifUpload` | エンコードはブラウザ、検証はどこでも |
 | `hagaki/markdown` | `<Image />` の組み立て・抽出、画像パスの差分、blurhash ユーティリティ | どこでも |
 | `hagaki/pending-images` | 保存前の画像を置くメモリ上のストア | ブラウザ |
-| `hagaki/auth/better-auth` | `committerFromBetterAuth` | どこでも |
+| `hagaki/auth/better-auth` | `committerFromBetterAuth`、`userIdFromSession`、`mapOAuthProfile` | どこでも |
 | `hagaki/content-worker` | `createContentApp` | Workers |
+
+## 破壊的変更: `userId` への改名
+
+hagaki 0.3 までは、編集者の ID を Minecraft のプレイヤー前提で `player` と
+呼んでいた。認証方式に依存しないよう、次のリリースからすべて `userId` に改名した。
+古いキーは読まない (フォールバックしない)。
+
+| 0.3 まで | 改名後 |
+|---|---|
+| `PathCommit.player` | `PathCommit.userId` |
+| `WikiHistoryEntry.player` (`info.json` の `history[].player`) | `WikiHistoryEntry.userId` |
+| `EditorSummary.player` (`article.json` の `editors[].player`) | `EditorSummary.userId` |
+| `ImportedEdit.player` (frontmatter の `modified[].player`) | `ImportedEdit.userId` (`modified[].userId`) |
+| `playerFromCommitterName` | `userIdFromCommitterName` |
+
+あわせて以下も変わった。
+
+- `userIdFromCommitterName` は 36 文字の UUID に限らず、末尾の括弧の中の任意の
+  ID (括弧・空白・`<`・`>`・制御文字を含まないもの) を取り出す。
+- `makeCommitter` の既定のフォーマットは、括弧・空白・`<`・`>`・制御文字を含む
+  ID を渡すと例外を投げる。
+- `posts.history` / `posts.firstCommit` は、リポジトリの既定ブランチではなく
+  `github.branch` で設定したブランチの履歴を読む。
+- `posts.firstCommit` / `files.firstCommit` と、`posts.history` の `page` を追加した。
+
+コンテンツリポジトリは、hagaki を上げるのと同じ変更で frontmatter の
+`modified[].player:` を `modified[].userId:` に書き換え、`hagaki generate`
+し直す。生成物 (`info.json` / `article.json`) を読むアプリは、配信中のコンテンツが
+入れ替わるまで `userId ?? player` のように両方を読む。
+
+記事を保存するアプリは、コンテンツの書き換えと hagaki の更新を同時に行う。
+`modified` を読み戻せない組み合わせで `getFromRepo` → `save` すると、
+`modified` が丸ごと消えるためである。改名後の hagaki で `player` のままの記事を
+保存しても、0.3 の hagaki で `userId` に書き換え済みの記事を保存しても同じことが起きる。
 
 ## 開発
 

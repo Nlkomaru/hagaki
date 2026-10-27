@@ -1,5 +1,5 @@
 import type { Octokit } from "octokit";
-import { playerFromCommitterName } from "../auth/index.js";
+import { userIdFromCommitterName } from "../auth/index.js";
 
 /**
  * Repository reads that the CDN can't serve: the working state of a file on a
@@ -35,10 +35,13 @@ export interface RepoEntry {
 export interface PathCommit {
     sha: string;
     message: string;
-    /** Commit author name — `makeCommitter` writes `"<name> (<uuid>)"`. */
+    /** Commit author name — `makeCommitter` writes `"<name> (<id>)"`. */
     author: string;
-    /** Player uuid recovered from {@link author}; `null` when it isn't in the convention. */
-    player: string | null;
+    /**
+     * Auth user id recovered from {@link author} (`userIdFromCommitterName`);
+     * `null` when the name isn't in the convention.
+     */
+    userId: string | null;
     date: string;
 }
 
@@ -198,32 +201,117 @@ export async function listTreePaths(deps: FilesDeps): Promise<string[]> {
         .map((e) => e.path as string);
 }
 
+/** Paging for {@link listPathCommits}, passed through to the commits API. */
+export interface PathCommitsOptions {
+    /** Commits per page (GitHub caps it at 100). Default 50. */
+    perPage?: number;
+    /** 1-based page number. Default 1 (the newest commits). */
+    page?: number;
+}
+
+/** Shape of one item of `GET /repos/{owner}/{repo}/commits` we read. */
+interface ApiCommit {
+    sha: string;
+    commit: {
+        message: string;
+        author?: { name?: string; date?: string } | null;
+    };
+}
+
+function toPathCommit(commit: ApiCommit): PathCommit {
+    const author = commit.commit.author?.name ?? "Unknown";
+    return {
+        sha: commit.sha,
+        message: commit.commit.message,
+        author,
+        userId: userIdFromCommitterName(author),
+        date: commit.commit.author?.date ?? "",
+    };
+}
+
+/**
+ * Page number of the `rel="last"` link in a GitHub `Link` header, or `null`
+ * when there is none (the current page is the only / last one).
+ */
+function lastPageFromLinkHeader(link: string | undefined): number | null {
+    if (!link) return null;
+    for (const part of link.split(",")) {
+        if (!/rel="last"/.test(part)) continue;
+        // `[?&]page=` so the `per_page=` parameter never matches.
+        const page = /<[^>]*[?&]page=(\d+)[^>]*>/.exec(part)?.[1];
+        return page ? Number(page) : null;
+    }
+    return null;
+}
+
 /** Commits that touched a path, newest first. */
 export async function listPathCommits(
     deps: FilesDeps,
     path: string,
-    options?: { perPage?: number },
+    options?: PathCommitsOptions,
 ): Promise<PathCommit[]> {
-    const { octokit, owner, repo } = deps;
+    const { octokit, owner, repo, branch } = deps;
     const { data } = await octokit.request(
         "GET /repos/{owner}/{repo}/commits",
         {
             owner,
             repo,
+            // Walk the configured branch, not the repository's default one.
+            sha: branch,
             path,
             per_page: options?.perPage ?? 50,
+            ...(options?.page ? { page: options.page } : {}),
         },
     );
-    return data.map((commit) => {
-        const author = commit.commit.author?.name ?? "Unknown";
-        return {
-            sha: commit.sha,
-            message: commit.commit.message,
-            author,
-            player: playerFromCommitterName(author),
-            date: commit.commit.author?.date ?? "",
-        };
+    return data.map(toPathCommit);
+}
+
+/**
+ * The oldest commit that touched a path — typically the one that created it —
+ * or `null` when no commit did. Works for any history length in at most two
+ * requests: list the path's commits one per page, read the `rel="last"` page
+ * number from the `Link` header, and fetch that page. Without a `Link` header
+ * the path has a single commit, which is already the oldest.
+ *
+ * Both requests list the configured branch, and the second is pinned to the
+ * head commit the first one returned, so a commit landing in between can't
+ * shift the page count.
+ *
+ * Like {@link listPathCommits} this follows GitHub's path history, so renames
+ * are not followed: a file moved into `path` starts at the move.
+ */
+export async function getFirstPathCommit(
+    deps: FilesDeps,
+    path: string,
+): Promise<PathCommit | null> {
+    const { octokit, owner, repo, branch } = deps;
+    const first = await octokit.request("GET /repos/{owner}/{repo}/commits", {
+        owner,
+        repo,
+        // Walk the configured branch, not the repository's default one.
+        sha: branch,
+        path,
+        per_page: 1,
     });
+    const newest = first.data[0];
+    if (!newest) return null;
+
+    const lastPage = lastPageFromLinkHeader(first.headers.link);
+    if (lastPage === null || lastPage <= 1) return toPathCommit(newest);
+
+    // Pin the second request to the head the first one saw. Listing from the
+    // branch again would count a commit that landed in between, and page
+    // `lastPage` would then hold the second-oldest commit instead.
+    const last = await octokit.request("GET /repos/{owner}/{repo}/commits", {
+        owner,
+        repo,
+        sha: newest.sha,
+        path,
+        per_page: 1,
+        page: lastPage,
+    });
+    const oldest = last.data[0];
+    return oldest ? toPathCommit(oldest) : null;
 }
 
 /**

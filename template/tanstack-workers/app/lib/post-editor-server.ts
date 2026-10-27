@@ -72,8 +72,9 @@ export const commitPostFn = createServerFn({ method: "POST" })
     .validator((input: CommitPostInput) => input)
     .handler(async ({ data }) => {
         await requireSession();
-        // Committer は userinfo 由来の Minecraft UUID + MCID(session.user.id
-        // は DB-less では不安定なため使わない — lib/committer.ts)。
+        // Committer は userinfo 由来の OIDC sub + preferred_username
+        // (session.user.id は DB-less では不安定なため使わない —
+        // lib/committer.ts)。sub が hagaki の userId になる。
         const committer = await resolveCommitter();
         if (!data.post.uuid) {
             throw new Error(

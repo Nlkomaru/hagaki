@@ -113,10 +113,12 @@ function parseImportedEdits(value: unknown): ImportedEdit[] | undefined {
     const edits: ImportedEdit[] = [];
     for (const raw of value) {
         if (typeof raw !== "object" || raw === null) continue;
-        const { date, player } = raw as { date?: unknown; player?: unknown };
+        // Only `userId` is read: the old `player` key (hagaki <= 0.3) is not a
+        // fallback, content has to be migrated (see the README).
+        const { date, userId } = raw as { date?: unknown; userId?: unknown };
         const iso = toIsoDate(date);
-        if (!iso || typeof player !== "string") continue;
-        edits.push({ date: iso, player });
+        if (!iso || typeof userId !== "string") continue;
+        edits.push({ date: iso, userId });
     }
     return edits.length > 0 ? edits : undefined;
 }
@@ -126,7 +128,7 @@ function parseImportedEdits(value: unknown): ImportedEdit[] | undefined {
  * any other shape (including a comma-separated string) is ignored. Entries
  * are trimmed, empties and non-strings dropped, and duplicates removed
  * (first occurrence wins). Values are not otherwise validated or
- * canonicalized — matching them against a player is the app's job.
+ * canonicalized — matching them against a user id is the app's job.
  *
  * @returns the cleaned list, or `undefined` when nothing is left so callers
  *   can omit the field entirely.

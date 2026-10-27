@@ -88,6 +88,26 @@ export interface BetterAuthLikeSession {
     } | null;
 }
 
+/**
+ * The user id hagaki records for a better-auth session: `session.user.id`,
+ * verbatim. This is the value that ends up in the committer name, and so in
+ * the generated `userId` fields (`info.json` history, `article.json`
+ * `editors`, `PathCommit.userId`), and the value an app should put in a post's
+ * frontmatter `editor` list. Compare against it to answer "did this user
+ * edit / may this user edit".
+ *
+ * hagaki doesn't know what the id is (an OIDC `sub`, a database key, a game
+ * account id) — only that it should be stable across logins. In DB-less
+ * setups, make sure the auth library keeps the provider's id as
+ * `session.user.id` (see {@link MappedOAuthUser}) or every login gets a new
+ * one. `null` when the session has no user or an empty id.
+ */
+export function userIdFromSession(
+    session: BetterAuthLikeSession | null | undefined,
+): string | null {
+    return session?.user?.id || null;
+}
+
 export interface CommitterFromBetterAuthOptions {
     /** Fallback when the session user has no email. */
     defaultEmail?: string;
@@ -97,7 +117,12 @@ export interface CommitterFromBetterAuthOptions {
 
 /**
  * Build a `Committer` from a better-auth session (or any object with the same
- * `user` shape). Returns `undefined` if the session lacks a usable name.
+ * `user` shape). The committer name embeds {@link userIdFromSession} as
+ * `"<name> (<id>)"`, which is how the history recovers who made each commit
+ * (`userIdFromCommitterName`). Returns `undefined` if the session lacks a
+ * usable name or email; throws if the id can't be carried by the default
+ * name format (it contains parentheses, whitespace, `<`, `>` or control
+ * characters).
  */
 export function committerFromBetterAuth(
     session: BetterAuthLikeSession | null | undefined,
@@ -111,7 +136,7 @@ export function committerFromBetterAuth(
     if (!email) return undefined;
     return makeCommitter({
         name,
-        id: user.id ?? undefined,
+        id: userIdFromSession(session) ?? undefined,
         email,
         nameFormat: options?.nameFormat,
     });

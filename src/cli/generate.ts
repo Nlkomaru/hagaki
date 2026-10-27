@@ -15,7 +15,7 @@ import type {
     ArticleSummary,
     WikiHistoryEntry,
 } from "../api/types.js";
-import { playerFromCommitterName } from "../auth/index.js";
+import { userIdFromCommitterName } from "../auth/index.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -38,12 +38,12 @@ function importedHistory(data: Record<string, unknown>): WikiHistoryEntry[] {
     const entries: WikiHistoryEntry[] = [];
     for (const raw of modified) {
         if (typeof raw !== "object" || raw === null) continue;
-        const entry = raw as { date?: unknown; player?: unknown };
+        const entry = raw as { date?: unknown; userId?: unknown };
         const date = toIsoDate(entry.date);
         if (!date) continue;
         entries.push({
             date,
-            player: typeof entry.player === "string" ? entry.player : null,
+            userId: typeof entry.userId === "string" ? entry.userId : null,
             source: "imported",
         });
     }
@@ -51,8 +51,8 @@ function importedHistory(data: Record<string, unknown>): WikiHistoryEntry[] {
 }
 
 /**
- * Commits that touched the article directory, oldest first. The player uuid
- * is recovered from the committer-name convention `"name (<uuid>)"`
+ * Commits that touched the article directory, oldest first. The user id
+ * is recovered from the committer-name convention `"name (<id>)"`
  * (`makeCommitter`'s default format). Requires a full clone — in Actions,
  * check out with `fetch-depth: 0`.
  */
@@ -79,7 +79,7 @@ async function gitHistory(
                 const [commit, rawDate, name] = line.split("\t");
                 return {
                     date: toIsoDate(rawDate) ?? "",
-                    player: playerFromCommitterName(name ?? ""),
+                    userId: userIdFromCommitterName(name ?? ""),
                     source: "git" as const,
                     commit,
                 };
