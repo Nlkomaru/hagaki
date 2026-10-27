@@ -39,8 +39,9 @@ async function buildAuth(baseURL: string) {
                         pkce: true,
                         discoveryUrl: `${env.MAIN_SERVER_URL}/.well-known/openid-configuration`,
                         // roles / preferred_username を userinfo で受け取る
-                        // ため明示。sub (Minecraft UUID) は committer 解決に
-                        // 使う(session.user.id は DB-less では不安定なので
+                        // ため明示。sub (プロバイダのユーザー ID) は
+                        // committer 解決に使い、hagaki の userId になる
+                        // (session.user.id は DB-less では不安定なので
                         // git committer のキーにしない — lib/committer.ts)。
                         scopes: ["openid", "profile", "email", "roles"],
                     },

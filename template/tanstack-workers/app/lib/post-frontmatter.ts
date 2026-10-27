@@ -40,5 +40,10 @@ export function postFrontmatter(post: WikiPostDetail) {
             ? { modified: post.modified }
             : {}),
         ...(post.draft ? { draft: true } : {}),
+        // Keep the editor list on save; dropping it here would silently
+        // clear it from the frontmatter.
+        ...(post.editor && post.editor.length > 0
+            ? { editor: post.editor }
+            : {}),
     };
 }

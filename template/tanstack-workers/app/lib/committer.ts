@@ -9,19 +9,23 @@ import { getAuth } from "./auth";
  *
  * DB-less 構成の better-auth では `session.user.id` は内部生成 ID で、
  * isolate が変わるたびに別ユーザー扱いになる。そのため Committer の
- * キーには使わず、MineAuth の userinfo から得た OIDC `sub`
- * (= Minecraft UUID) と `preferred_username` (= MCID) を使う:
+ * キーには使わず、OIDC プロバイダの userinfo から得た `sub` と
+ * `preferred_username` を使う。`sub` がそのまま hagaki のユーザー ID
+ * (履歴の `userId`、frontmatter の `editor`) になる:
  *
- *   getAccessToken({ providerId: "MineAuth" })
- *     → GET ${MAIN_SERVER_URL}/oauth2/userinfo (Bearer)
- *     → committer "MCID (uuid)" <uuid+mcid@morino.party>
+ *   getAccessToken()
+ *     → GET <userinfo endpoint> (Bearer)
+ *     → committer "<preferred_username> (<sub>)" <<sub>@users.noreply.invalid>
+ *
+ * プロバイダ (このテンプレートでは MineAuth) は lib/auth.ts の設定だけで、
+ * ここは OIDC の標準クレームしか見ない。
  */
 
-interface MinecraftProfile {
-    /** OIDC `sub` — Minecraft UUID。 */
-    uuid: string;
-    /** OIDC `preferred_username` — MCID。 */
-    mcid: string;
+interface OidcIdentity {
+    /** OIDC `sub` — プロバイダ内で安定したユーザー ID。 */
+    sub: string;
+    /** OIDC `preferred_username` — 表示名。 */
+    preferredUsername: string;
 }
 
 // userinfo 2 段目 fetch の結果キャッシュ(isolate ローカル)。アクセス
@@ -29,7 +33,7 @@ interface MinecraftProfile {
 // 2 段 fetch が走るのを避ける。
 const profileCache = new Map<
     string,
-    { profile: MinecraftProfile; expiresAt: number }
+    { profile: OidcIdentity; expiresAt: number }
 >();
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -42,13 +46,15 @@ export async function resolveCommitter(): Promise<Committer> {
     });
     const accessToken = tokenResult.accessToken;
     if (!accessToken) {
-        throw new Error("committer: MineAuth access token unavailable");
+        throw new Error("committer: OAuth access token unavailable");
     }
 
     const profile = await fetchProfile(accessToken);
+    // `sub` を session.user.id の代わりに渡す。committer 名は
+    // "<name> (<sub>)" になり、hagaki が履歴から userId として読み戻す。
     const committer = committerFromBetterAuth(
-        { user: { id: profile.uuid, name: profile.mcid } },
-        { defaultEmail: `${profile.uuid}+${profile.mcid}@morino.party` },
+        { user: { id: profile.sub, name: profile.preferredUsername } },
+        { defaultEmail: `${profile.sub}@users.noreply.invalid` },
     );
     if (!committer) {
         throw new Error("committer: could not build committer from userinfo");
@@ -56,7 +62,7 @@ export async function resolveCommitter(): Promise<Committer> {
     return committer;
 }
 
-async function fetchProfile(accessToken: string): Promise<MinecraftProfile> {
+async function fetchProfile(accessToken: string): Promise<OidcIdentity> {
     const now = Date.now();
     const cached = profileCache.get(accessToken);
     if (cached && cached.expiresAt > now) return cached.profile;
@@ -79,9 +85,9 @@ async function fetchProfile(accessToken: string): Promise<MinecraftProfile> {
         );
     }
 
-    const profile: MinecraftProfile = {
-        uuid: data.sub,
-        mcid: data.preferred_username,
+    const profile: OidcIdentity = {
+        sub: data.sub,
+        preferredUsername: data.preferred_username,
     };
     for (const [key, value] of profileCache) {
         if (value.expiresAt <= now) profileCache.delete(key);

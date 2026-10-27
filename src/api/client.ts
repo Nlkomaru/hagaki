@@ -12,12 +12,14 @@ import {
     fileExists,
     getBinaryFile,
     getFile,
+    getFirstPathCommit,
     getPathDiff,
     listDirectory,
     listFilesRecursive,
     listPathCommits,
     listTreePaths,
     type PathCommit,
+    type PathCommitsOptions,
     type RepoEntry,
     type RepoFile,
 } from "./files.js";
@@ -75,11 +77,21 @@ export interface HagakiClient {
         listUuidsInRepo(): Promise<string[]>;
         /** Every repository path belonging to a post (body + assets). */
         repoPaths(uuid: string): Promise<string[]>;
-        /** Commits that touched the post's `index.mdx`, newest first. */
+        /**
+         * Commits that touched the post's `index.mdx`, newest first. Pass
+         * `page` to read further back than one page (`perPage`, max 100).
+         */
         history(
             uuid: string,
-            options?: { perPage?: number },
+            options?: PathCommitsOptions,
         ): Promise<PathCommit[]>;
+        /**
+         * The oldest commit that touched the post's `index.mdx` — the one
+         * that created it — in at most two requests however long the
+         * history is. `null` when there is no commit (the post was never
+         * saved). Its `userId` is the post's creator, when recoverable.
+         */
+        firstCommit(uuid: string): Promise<PathCommit | null>;
         /** Unified diff of the post body between two commits. */
         diff(uuid: string, base: string, head: string): Promise<string | null>;
         save(
@@ -96,6 +108,8 @@ export interface HagakiClient {
         exists(path: string, ref?: string): Promise<boolean>;
         list(path: string, ref?: string): Promise<RepoEntry[]>;
         listRecursive(path: string, ref?: string): Promise<string[]>;
+        /** Oldest commit that touched `path` (see `posts.firstCommit`). */
+        firstCommit(path: string): Promise<PathCommit | null>;
     };
     commits: {
         getWithChecks(sha: string): Promise<CommitWithChecks>;
@@ -200,6 +214,9 @@ export function createHagakiClient(config: HagakiConfig): HagakiClient {
                     options,
                 );
             },
+            async firstCommit(uuid) {
+                return getFirstPathCommit(await filesDeps(), postPath(uuid));
+            },
             async diff(uuid, base, head) {
                 return getPathDiff(
                     await filesDeps(),
@@ -245,6 +262,9 @@ export function createHagakiClient(config: HagakiConfig): HagakiClient {
             },
             async listRecursive(path, ref) {
                 return listFilesRecursive(await filesDeps(), path, ref);
+            },
+            async firstCommit(path) {
+                return getFirstPathCommit(await filesDeps(), path);
             },
         },
         commits: {

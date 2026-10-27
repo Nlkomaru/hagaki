@@ -37,6 +37,7 @@ YAML。gray-matter（js-yaml）でシリアライズされる形（2スペース
 | `category` | string | ✓ | カテゴリの `slug` を参照 |
 | `description` | string | ✓ | 概要。空なら `''` |
 | `draft` | boolean | – | `true` で下書き。公開記事では省略（`false` は書かない） |
+| `editor` | string[] | – | 編集者として指定する認証ユーザー ID（better-auth の `session.user.id`）の配列。空なら省略 |
 | `thumbnail` | object | – | サムネイル。無い記事では省略 |
 | `thumbnail.imageId` | string (UUID) | ✓* | `assets/<imageId>.avif` を指す。パスは uuid + imageId から導出できるので書かない |
 | `thumbnail.blurhash64` | string | ✓* | blurhash を **base64 エンコード**した文字列（下記参照） |
@@ -74,6 +75,28 @@ option:
 公開するときは frontmatter から `draft` を消す（`savePost` は `draft` が
 falsy なら書き出さない）。
 
+### 編集者の指定（`editor`）
+
+`editor` は、記事の編集者として指定するユーザーの認証ユーザー ID を並べる。
+ID は利用側の認証が返す安定した ID（better-auth なら `session.user.id`、
+`userIdFromSession` で取れる値）で、git 履歴の `userId` と同じ値になる。
+hagaki は ID の中身を解釈しない（例では OIDC の `sub` が UUID のプロバイダを想定）:
+
+```yaml
+editor:
+  - 069a79f4-44e9-4726-a5be-fca90e38aaf5
+  - 853c80ef-3c37-49fd-aa49-938b674adae6
+```
+
+- 読み込み時（`parsePostMarkdown` / `parseEditorList`）は、各要素を trim し、
+  空の要素と重複を取り除く。YAML の配列だけを受け付け、カンマ区切りの文字列
+  （`editor: "id1, id2"`）などそれ以外の形は無視する。
+- 何も残らなければ省略する（`savePost` は空の配列を書き出さない）。
+- hagaki は値を運ぶだけで、権限として扱わない。「指定したユーザーだけが
+  編集できる」といった意味づけは利用側のアプリが決める。
+- 生成物には載らない（`info.json` / `article.json` の `editors` は git 履歴から
+  畳んだ「実際に編集した人」で、別物）。
+
 ### blurhash64
 
 blurhash は base83 文字集合（`{` `}` `|` `$` `%` `@` など）を含み、YAML や
@@ -87,9 +110,12 @@ const blurhash = atob(blurhash64); // → blurhashToDataUrl(blurhash, w, h)
 ### 編集履歴（`modified`）— 補助フィールド
 
 編集履歴の**一次ソースは git のコミット履歴**。`makeCommitter` の既定では
-committer 名が `"<表示名> (<player uuid>)"` になるため、コミットから
+committer 名が `"<表示名> (<userId>)"` になるため、コミットから
 「いつ・誰が」を復元できる（email はセッションの email、無ければ
-`defaultEmail` のフォールバック）。
+`defaultEmail` のフォールバック）。`userId` は末尾の括弧の中身で、
+`userIdFromCommitterName` が取り出す。`makeCommitter` は括弧・空白・`<`・`>`・
+制御文字を含む ID を拒否する (git は名前から `<` と `>` を取り除くため)。
+そのため、書き出した ID は `git log` からそのまま読み戻せる。
 
 `modified` はそれを補うためだけのフィールドで、別システムから移行した記事の
 **git 以前の編集履歴**を保存する場所。移行記事以外では省略する。
@@ -97,13 +123,15 @@ committer 名が `"<表示名> (<player uuid>)"` になるため、コミット�
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `modified[].date` | string (ISO 8601 UTC) | 例: `2024-06-19T15:00:00.000Z` |
-| `modified[].player` | string (UUID) | 編集した Minecraft プレイヤーの UUID |
+| `modified[].userId` | string | 編集したユーザーの認証ユーザー ID（git 履歴の `userId` と同じ ID 空間） |
 
 - 昇順で並べる（先頭 = 元システムでの作成、末尾 = 移行前の最後の編集）。
 - git 移行後の編集では**追記しない**。保存はコミットとして記録される。
 - 完全な履歴が欲しいときは `modified` と該当ファイルの git コミットを
   date 昇順でマージする。
 - 記事の作成日時は `modified[0].date`、無ければ最初の git コミット日時。
+- hagaki 0.3 までは `modified[].player` だった。今は `userId` しか読まないので、
+  古いコンテンツは書き換えが要る（[README の破壊的変更](../README.md#破壊的変更-userid-への改名)）。
 
 移行記事を想定した frontmatter の例（`modified` 付き）:
 
@@ -119,9 +147,9 @@ thumbnail:
   blurhash64: VUhLMGc4JCV4XlZzfld4dFJpdFIlZ05iTXtWQHNTb2ZWQHNv
 modified:
   - date: 2024-06-19T15:00:00.000Z
-    player: f8b761ec-4a54-48eb-a040-c5604042bcc9
+    userId: f8b761ec-4a54-48eb-a040-c5604042bcc9
   - date: 2024-06-20T12:30:00.000Z
-    player: 389b1a68-f647-4dd0-a421-61b6c22fdebe
+    userId: 389b1a68-f647-4dd0-a421-61b6c22fdebe
 ---
 ```
 
@@ -233,15 +261,15 @@ git コミット履歴のマージは**ここで焼き込む**ので、消費側
     "created": "2024-06-19T15:00:00.000Z",
     "updated": "2026-08-01T00:00:00.000Z",
     "history": [
-        { "date": "2024-06-19T15:00:00.000Z", "player": "f8b761ec-…", "source": "imported" },
-        { "date": "2026-08-01T00:00:00.000Z", "player": "389b1a68-…", "source": "git", "commit": "<sha>" }
+        { "date": "2024-06-19T15:00:00.000Z", "userId": "f8b761ec-…", "source": "imported" },
+        { "date": "2026-08-01T00:00:00.000Z", "userId": "389b1a68-…", "source": "git", "commit": "<sha>" }
     ]
 }
 ```
 
 - `history` = frontmatter の `modified`（`source: "imported"`）と、該当記事
-  ディレクトリに触れた git コミット（`source: "git"`、`player` は committer 名
-  `"<表示名> (<uuid>)"` から抽出）を date 昇順でマージしたもの。
+  ディレクトリに触れた git コミット（`source: "git"`、`userId` は committer 名
+  `"<表示名> (<userId>)"` から抽出。規約外の名前なら `null`）を date 昇順でマージしたもの。
 - `created` = `history` 先頭の date、`updated` = 末尾の date。
 - `option` は frontmatter の値をそのまま焼き込む（無い記事では省略）。
   一覧側から座標などで記事を絞れるように `article.json` にも載る。
@@ -249,7 +277,7 @@ git コミット履歴のマージは**ここで焼き込む**ので、消費側
 ### `article.json` — 全記事 manifest
 
 `info.json` から `history` を除き、代わりにそれを編集者ごとに畳んだ
-`editors`（`{ player, edits, lastEditedAt }` の配列、最終編集の新しい順）を
+`editors`（`{ userId, edits, lastEditedAt }` の配列、最終編集の新しい順）を
 加えたオブジェクトの配列。一覧・ソート用。`draft: true` の記事は載らない。
 
 ### `slug-index.json` — slug → uuid マップ

@@ -7,8 +7,13 @@ export interface WikiThumbnail {
 
 export interface WikiHistoryEntry {
     date: string;
-    /** Minecraft player uuid, when recoverable. */
-    player: string | null;
+    /**
+     * Auth user id of whoever made the edit (the id the app embedded in the
+     * committer name — typically `session.user.id`). `null` when it can't be
+     * recovered: commits outside the `"<name> (<id>)"` convention, or
+     * imported entries without one.
+     */
+    userId: string | null;
     /** `imported` = pre-git history from frontmatter `modified`; `git` = commit. */
     source: "imported" | "git";
     /** Commit sha for `source: "git"` entries. */
@@ -18,7 +23,8 @@ export interface WikiHistoryEntry {
 /** Frontmatter `modified` entry — pre-git history imported from a previous system. */
 export interface ImportedEdit {
     date: string;
-    player: string;
+    /** Auth user id of the editor, in the same id space as git history. */
+    userId: string;
 }
 
 /**
@@ -71,24 +77,34 @@ export interface WikiPostDetail extends WikiPost {
      * repository. Omitted (not `false`) on published posts.
      */
     draft?: boolean;
+    /**
+     * Auth user ids (typically better-auth's `session.user.id`, see
+     * `userIdFromSession`) the post's frontmatter lists as its editors
+     * (`editor: [id, id]`). hagaki only carries the list — what it means
+     * (e.g. "only these users may edit") is up to the app, since the core
+     * has no notion of permissions. Not to be confused with the generated
+     * `editors` ({@link EditorSummary}), which records who *did* edit.
+     * Trimmed and deduplicated; omitted (not `[]`) when empty.
+     */
+    editor?: string[];
 }
 
 /**
- * Per-article edit summary for one player, folded out of the merged history
+ * Per-article edit summary for one user, folded out of the merged history
  * by the generate step.
  */
 export interface EditorSummary {
-    /** Minecraft player uuid. */
-    player: string;
-    /** Number of edits this player made to the article. */
+    /** Auth user id (see {@link WikiHistoryEntry.userId}). */
+    userId: string;
+    /** Number of edits this user made to the article. */
     edits: number;
-    /** When this player last edited the article. */
+    /** When this user last edited the article. */
     lastEditedAt: string;
 }
 
 /**
  * One `article.json` manifest entry. Carries `editors` instead of the full
- * `history` so "articles edited by player X" doesn't require fetching every
+ * `history` so "articles edited by user X" doesn't require fetching every
  * article's `info.json`.
  */
 export interface ArticleSummary extends WikiPost {

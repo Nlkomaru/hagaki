@@ -6,6 +6,7 @@ TanStack Start + Cloudflare Workers + [hagaki](../../) の編集・閲覧 UI。
 - `/posts`: `hagaki.posts.list()` で記事一覧
 - `/posts/$slug/edit`: `HagakiEditor` での編集。保存は server function から本文と画像を 1 コミットで GitHub へ
 - 認証は better-auth + MineAuth (OIDC, PKCE)。DB は持たない
+- MineAuth は例で、コミットの著者には OIDC の `sub` と `preferred_username` だけを使う (`app/lib/committer.ts`)。`sub` が hagaki のユーザー ID (履歴の `userId`、frontmatter の `editor`) になるので、`lib/auth.ts` の設定を差し替えれば他の OIDC プロバイダでも動く
 
 ## 構成
 

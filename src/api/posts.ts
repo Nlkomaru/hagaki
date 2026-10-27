@@ -1,6 +1,7 @@
 import matter from "gray-matter";
 import type { Octokit } from "octokit";
 import type { Committer } from "../auth/index.js";
+import { parseEditorList } from "./content.js";
 import { bytesToBase64, type CommitFile, commitFiles } from "./tree-commit.js";
 import type { SaveResult, WikiPostDetail } from "./types.js";
 
@@ -48,6 +49,8 @@ export async function savePost(
     }
     const filePath = `${repo.contentPath.replace(/\/$/, "")}/${form.uuid}/index.mdx`;
 
+    // Normalized the same way as on read, so the stored list stays clean.
+    const editor = parseEditorList(form.editor);
     const content = matter.stringify(form.body || "", {
         title: form.title,
         slug: form.slug,
@@ -63,6 +66,7 @@ export async function savePost(
             ? { modified: form.modified }
             : {}),
         ...(form.draft ? { draft: true } : {}),
+        ...(editor ? { editor } : {}),
     });
 
     // Assets to add or remove alongside the post can only be expressed as a
