@@ -15,7 +15,7 @@ import { getAuth } from "./auth";
  *
  *   getAccessToken()
  *     → GET <userinfo endpoint> (Bearer)
- *     → committer "<preferred_username> (<sub>)" <<sub>@users.noreply.invalid>
+ *     → committer "<preferred_username> (<sub>)" <<sub>+<preferred_username>@users.noreply.morino.party>
  *
  * プロバイダ (このテンプレートでは MineAuth) は lib/auth.ts の設定だけで、
  * ここは OIDC の標準クレームしか見ない。
@@ -54,7 +54,9 @@ export async function resolveCommitter(): Promise<Committer> {
     // "<name> (<sub>)" になり、hagaki が履歴から userId として読み戻す。
     const committer = committerFromBetterAuth(
         { user: { id: profile.sub, name: profile.preferredUsername } },
-        { defaultEmail: `${profile.sub}@users.noreply.invalid` },
+        {
+            defaultEmail: `${profile.sub}+${profile.preferredUsername}@users.noreply.morino.party`,
+        },
     );
     if (!committer) {
         throw new Error("committer: could not build committer from userinfo");
