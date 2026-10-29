@@ -15,17 +15,16 @@ deploy するものではなく、ライブラリとして使う。利用例は�
 
 ## Install
 
-GitHub Packages に `@morinoparty/hagaki` として公開している。GitHub Release を
-publish すると、そのタグ (`v0.2.0` など) の版を Actions が公開する
-(`.github/workflows/publish.yml`)。
+npm (`https://registry.npmjs.org`) に `@morinoparty/hagaki` として公開している。
+GitHub Release を publish すると、そのタグ (`v0.2.0` など) の版を Actions が公開する
+(`.github/workflows/publish.yml`)。公開には npm の trusted publishing (OIDC) を使うので、
+npm のトークンは secret に置いていない。
 
-GitHub Packages の npm レジストリは公開パッケージでも認証が要るので、`.npmrc` に
-スコープとトークン (`read:packages`) を設定してから入れる。
+`.npmrc` の設定やトークンは不要。以前の版 (0.4.0 まで) は GitHub Packages にあり、
+`@morinoparty:registry=https://npm.pkg.github.com` を設定している場合はそちらを読むので、
+その行を消してから入れる。
 
 ```sh
-# .npmrc
-# @morinoparty:registry=https://npm.pkg.github.com
-# //npm.pkg.github.com/:_authToken=<read:packages を持つトークン>
 pnpm add @morinoparty/hagaki
 # エディタを使う場合 (lexical は @mdxeditor/editor と同じ版にそろえる)
 pnpm add @mdxeditor/editor @mdxeditor/gurx lexical@^0.48.0 react react-dom

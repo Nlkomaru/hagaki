@@ -14,7 +14,7 @@
 - プルリクエストのタイトルはコミットメッセージと同じ形式（emoji + 英語の概要）で書くこと
 - プルリクエストの本文は英語で、変更内容と背景を簡潔に書くこと
 - 作業が途中で止まった場合や、ユーザーが明示的に「push しない」「PR を作らない」と言った場合はこの限りではない
-- GitHub Release の作成 (= GitHub Packages への公開) は、ユーザーに指示されない限り行わないこと
+- GitHub Release の作成 (= npm への公開) は、ユーザーに指示されない限り行わないこと
 
 ## Repository
 - [hagaki](https://github.com/morinoparty/hagaki)

@@ -63,5 +63,5 @@ MineAuth には `<origin>/api/auth/callback/MineAuth` を redirect URI として
 
 ## 外に持ち出すとき
 
-- `package.json` の `"@morinoparty/hagaki": "workspace:*"` を公開版 (`"^0.2.0"` など) にし、`.npmrc` に `@morinoparty:registry=https://npm.pkg.github.com` を置く
+- `package.json` の `"@morinoparty/hagaki": "workspace:*"` を公開版 (`"^0.2.0"` など) にする (npm にあるので `.npmrc` の設定は要らない)
 - `biome.json` の `"root": false` と `"extends": "//"` を消して単独の設定にする
