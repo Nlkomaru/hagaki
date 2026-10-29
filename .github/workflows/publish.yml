@@ -1,6 +1,6 @@
 name: Publish package
 
-# GitHub Release を publish したときだけ @morinoparty/hagaki を GitHub Packages に公開する。
+# GitHub Release を publish したときだけ @morinoparty/hagaki を npm (registry.npmjs.org) に公開する。
 # version はリリースのタグ (v0.2.0) から決める。package.json の version は据え置き。
 on:
   release:
@@ -8,7 +8,8 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  # npm の trusted publishing (OIDC) で使う。npm のトークンは secret に置かない
+  id-token: write
 
 jobs:
   publish:
@@ -45,17 +46,10 @@ jobs:
           ' "$VERSION"
           echo "publishing @morinoparty/hagaki@$VERSION"
 
-      # 公開先は package.json の publishConfig.registry (GitHub Packages)。
-      # 以前は setup-node の registry-url が書いていた認証設定を ~/.npmrc に書く。
-      # トークンそのものは書かず、pnpm が実行時に NODE_AUTH_TOKEN を展開する
-      - name: Configure GitHub Packages auth
-        run: |
-          {
-            echo "@morinoparty:registry=https://npm.pkg.github.com"
-            echo '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}'
-          } >> ~/.npmrc
-
-      - name: Publish to GitHub Packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 公開先は package.json の publishConfig.registry (npm)。
+      # 認証は trusted publishing: pnpm が GitHub の OIDC トークンを npm のトークンと交換する。
+      # ~/.npmrc にトークンがあると OIDC を使わないので、認証設定は書かない。
+      # npm 側でこのリポジトリの publish.yml を trusted publisher として登録しておく必要がある。
+      # provenance は trusted publishing で自動的に付く
+      - name: Publish to npm
         run: pnpm publish --no-git-checks

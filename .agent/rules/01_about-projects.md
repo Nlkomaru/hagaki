@@ -2,7 +2,7 @@
 「hagaki」という、GitHub をストレージにする headless なマークダウンエディタとコンテンツ API の TypeScript ライブラリです。
 リポジトリ名は `hagaki`、パッケージ名は `@morinoparty/hagaki` です。
 
-deploy するものではなく、ライブラリとして利用されます。GitHub Release を publish すると、そのタグ (`v0.2.0` など) の版が GitHub Actions (`.github/workflows/publish.yml`) から GitHub Packages (`https://npm.pkg.github.com`) に公開されます。
+deploy するものではなく、ライブラリとして利用されます。GitHub Release を publish すると、そのタグ (`v0.2.0` など) の版が GitHub Actions (`.github/workflows/publish.yml`) から npm (`https://registry.npmjs.org`) に trusted publishing (OIDC) で公開されます。
 `package.json` の `version` は据え置きで、公開時の version はリリースのタグから決まります。
 
 ## 目的
